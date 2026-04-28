@@ -521,8 +521,8 @@ class _ExercisePickerGrid extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Icon(ex.icon,
-                        color: ex.accentColor, size: 30),
+                    Image.asset(ex.imagePath,
+                        width: 30, height: 30),
                     const Spacer(),
                     if (isSelected)
                       Icon(Icons.check_circle_rounded,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Color;
 
 enum ExerciseType { reps, duration }
 
@@ -9,7 +9,7 @@ class ExerciseModel {
   final String name;
   final String nameKr;
   final String description;
-  final IconData icon;
+  final String imagePath;
   final ExerciseType type;
   final int defaultReps;
   final int defaultSets;
@@ -23,7 +23,7 @@ class ExerciseModel {
     required this.name,
     required this.nameKr,
     required this.description,
-    required this.icon,
+    required this.imagePath,
     required this.type,
     required this.defaultReps,
     required this.defaultSets,

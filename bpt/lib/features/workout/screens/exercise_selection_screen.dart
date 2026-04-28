@@ -183,8 +183,8 @@ class _ExerciseCard extends StatelessWidget {
                     color: exercise.accentColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(exercise.icon,
-                      color: exercise.accentColor, size: 22),
+                  child: Image.asset(exercise.imagePath,
+                      width: 22, height: 22),
                 ),
                 const Spacer(),
                 if (isSelected)

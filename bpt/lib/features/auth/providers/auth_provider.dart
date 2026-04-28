@@ -32,18 +32,26 @@ class AuthNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> signUp(String name, String email, String password) async {
+  Future<void> signUp({
+    required String username,
+    required String password,
+    required String name,
+    String? gender,
+    double? heightCm,
+    double? weightKg,
+    String? workoutGoal,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     await Future.delayed(const Duration(milliseconds: 1500));
 
-    if (email.isNotEmpty && password.length >= 6 && name.isNotEmpty) {
+    if (username.isNotEmpty && password.length >= 6 && name.isNotEmpty) {
       _isLoggedIn = true;
       _error = null;
     } else {
-      _error = 'Please fill in all fields correctly.';
+      _error = 'Please fill in all required fields correctly.';
     }
 
     _isLoading = false;

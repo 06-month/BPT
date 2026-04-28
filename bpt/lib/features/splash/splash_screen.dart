@@ -43,16 +43,18 @@ class _SplashScreenState extends State<SplashScreen>
       backgroundColor: Colors.white,
       body: FadeTransition(
         opacity: _fadeAnim,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Center(
+              child: Image.asset(
                 'assets/images/logo_BPT.png',
                 width: MediaQuery.of(context).size.width * 0.75,
               ),
-              const SizedBox(height: 40),
-              SizedBox(
+            ),
+            Positioned(
+              bottom: 80,
+              child: SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
@@ -63,8 +65,8 @@ class _SplashScreenState extends State<SplashScreen>
                       AppColors.primary.withValues(alpha: 0.15),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
