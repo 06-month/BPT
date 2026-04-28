@@ -29,9 +29,11 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
     )..repeat(reverse: true);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ex = findExercise(widget.exerciseId);
+      // initialize() is always called by the caller before navigation.
+      // Only fall back to defaults if exercise doesn't match (direct navigation edge case).
       final w = ref.read(workoutProvider);
-      if (w.status == WorkoutStatus.idle) {
+      if (w.exerciseId != widget.exerciseId) {
+        final ex = findExercise(widget.exerciseId);
         ref.read(workoutProvider.notifier).initialize(
               widget.exerciseId,
               ex.defaultReps == 0 ? ex.defaultDurationSeconds : ex.defaultReps,
