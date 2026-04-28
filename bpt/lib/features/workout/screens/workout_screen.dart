@@ -63,6 +63,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
         'elapsedSeconds': w.elapsedSeconds,
         'postureScore': w.postureScore,
         'feedbackHistory': w.feedbackHistory,
+        'targetReps': w.targetReps,
         'targetSets': w.targetSets,
       },
     );

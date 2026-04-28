@@ -81,9 +81,13 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
     final score = r['postureScore'] as double? ?? 0.0;
     final feedbacks =
         (r['feedbackHistory'] as List?)?.cast<String>() ?? [];
+    final targetReps = r['targetReps'] as int? ?? 0;
 
     final accuracy =
         totalReps == 0 ? 0 : ((correctReps / totalReps) * 100).round();
+    final achievement = targetReps == 0
+        ? accuracy
+        : ((correctReps / targetReps) * 100).clamp(0.0, 100.0).round();
     final m = elapsedSec ~/ 60;
     final sec = elapsedSec % 60;
     final duration = '${m}m ${sec}s';
@@ -136,6 +140,15 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
                   strings: s,
                 ),
               ),
+              if (targetReps > 0) ...[
+                const SizedBox(height: 16),
+                _AchievementCard(
+                  achievement: achievement,
+                  correctReps: correctReps,
+                  targetReps: targetReps,
+                  strings: s,
+                ),
+              ],
               const SizedBox(height: 24),
               _StatsRow(
                 totalReps: totalReps,
@@ -521,6 +534,91 @@ class _VideoReplaySection extends StatelessWidget {
                       ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Achievement Card ───────────────────────────────────────────────────────
+class _AchievementCard extends StatelessWidget {
+  const _AchievementCard({
+    required this.achievement,
+    required this.correctReps,
+    required this.targetReps,
+    required this.strings,
+  });
+  final int achievement;
+  final int correctReps;
+  final int targetReps;
+  final dynamic strings;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final s = strings;
+
+    final color = achievement >= 90
+        ? AppColors.scoreExcellent
+        : achievement >= 75
+            ? AppColors.scoreGood
+            : achievement >= 50
+                ? AppColors.scoreFair
+                : AppColors.scorePoor;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.flag_rounded, color: color, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                s.locale == 'ko' ? '목표 달성률' : 'Goal Achievement',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              Text(
+                '$correctReps / $targetReps ${s.reps}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: achievement / 100,
+                    backgroundColor: color.withValues(alpha: 0.12),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                    minHeight: 10,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '$achievement%',
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

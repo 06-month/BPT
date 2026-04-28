@@ -122,6 +122,8 @@ final mockWorkoutRecords = <WorkoutRecordModel>[
     durationSeconds: 320,
     postureScore: 88,
     feedbackNotes: ['Great depth!', 'Watch knee alignment on rep 4 & 9'],
+    targetReps: 15,
+    targetSets: 3,
   ),
   WorkoutRecordModel(
     id: 'r002',
@@ -134,6 +136,8 @@ final mockWorkoutRecords = <WorkoutRecordModel>[
     durationSeconds: 240,
     postureScore: 92,
     feedbackNotes: ['Excellent form!', 'Keep core tight throughout'],
+    targetReps: 12,
+    targetSets: 3,
   ),
   WorkoutRecordModel(
     id: 'r003',
@@ -146,6 +150,8 @@ final mockWorkoutRecords = <WorkoutRecordModel>[
     durationSeconds: 280,
     postureScore: 80,
     feedbackNotes: ['Good form', 'Keep back neutral throughout'],
+    targetReps: 8,
+    targetSets: 3,
   ),
   WorkoutRecordModel(
     id: 'r004',
@@ -158,6 +164,8 @@ final mockWorkoutRecords = <WorkoutRecordModel>[
     durationSeconds: 180,
     postureScore: 88,
     feedbackNotes: ['Great lat activation!', 'Pull to upper chest'],
+    targetReps: 12,
+    targetSets: 3,
   ),
   WorkoutRecordModel(
     id: 'r005',
@@ -170,6 +178,8 @@ final mockWorkoutRecords = <WorkoutRecordModel>[
     durationSeconds: 310,
     postureScore: 82,
     feedbackNotes: ['Consistent pace', 'Toes pointing forward more'],
+    targetReps: 15,
+    targetSets: 3,
   ),
   WorkoutRecordModel(
     id: 'r006',
@@ -182,6 +192,8 @@ final mockWorkoutRecords = <WorkoutRecordModel>[
     durationSeconds: 200,
     postureScore: 90,
     feedbackNotes: ['Great chest activation', 'Lock out elbows at top'],
+    targetReps: 12,
+    targetSets: 3,
   ),
   WorkoutRecordModel(
     id: 'r007',
@@ -194,6 +206,8 @@ final mockWorkoutRecords = <WorkoutRecordModel>[
     durationSeconds: 420,
     postureScore: 85,
     feedbackNotes: ['Strong set!', 'Maintain neutral spine'],
+    targetReps: 20,
+    targetSets: 3,
   ),
 ];
 
