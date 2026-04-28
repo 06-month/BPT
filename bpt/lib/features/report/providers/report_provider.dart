@@ -21,6 +21,7 @@ final reportDataProvider = Provider<Map<String, dynamic>>((ref) {
         'avgScore': dailyPostureScores.fold(0.0, (a, b) => a + b) /
             dailyPostureScores.length,
         'totalMinutes': 162,
+        'avgAchievement': 86.0,
       };
     case ReportTab.weekly:
       return {
@@ -32,6 +33,7 @@ final reportDataProvider = Provider<Map<String, dynamic>>((ref) {
         'totalReps': 1288,
         'avgScore': 86.6,
         'totalMinutes': 870,
+        'avgAchievement': 88.0,
       };
     case ReportTab.monthly:
       return {
@@ -48,6 +50,7 @@ final reportDataProvider = Provider<Map<String, dynamic>>((ref) {
         'totalReps': 5480,
         'avgScore': 87.2,
         'totalMinutes': 2365,
+        'avgAchievement': 85.0,
       };
   }
 });

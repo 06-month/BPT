@@ -139,35 +139,42 @@ class _SummaryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = strings;
     final avg = data['avgScore'] as double;
-    return Row(
+    final achievement = data['avgAchievement'] as double? ?? 0.0;
+    return Column(
       children: [
-        Expanded(
-            child: _SummaryCard(
-                label: s.workouts,
-                value: '${data['totalWorkouts']}',
-                icon: Icons.fitness_center_rounded,
-                color: AppColors.primary)),
-        const SizedBox(width: 10),
-        Expanded(
-            child: _SummaryCard(
-                label: s.totalReps,
-                value: '${data['totalReps']}',
-                icon: Icons.loop_rounded,
-                color: AppColors.secondary)),
-        const SizedBox(width: 10),
-        Expanded(
-            child: _SummaryCard(
-                label: s.avgScore,
-                value: '${avg.toStringAsFixed(1)}%',
-                icon: Icons.star_rounded,
-                color: AppColors.warning)),
-        const SizedBox(width: 10),
-        Expanded(
-            child: _SummaryCard(
-                label: s.minutes,
-                value: '${data['totalMinutes']}',
-                icon: Icons.timer_outlined,
-                color: AppColors.info)),
+        Row(
+          children: [
+            Expanded(
+                child: _SummaryCard(
+                    label: s.workouts,
+                    value: '${data['totalWorkouts']}',
+                    icon: Icons.fitness_center_rounded,
+                    color: AppColors.primary)),
+            const SizedBox(width: 10),
+            Expanded(
+                child: _SummaryCard(
+                    label: s.totalReps,
+                    value: '${data['totalReps']}',
+                    icon: Icons.loop_rounded,
+                    color: AppColors.secondary)),
+            const SizedBox(width: 10),
+            Expanded(
+                child: _SummaryCard(
+                    label: s.avgScore,
+                    value: '${avg.toStringAsFixed(1)}%',
+                    icon: Icons.star_rounded,
+                    color: AppColors.warning)),
+            const SizedBox(width: 10),
+            Expanded(
+                child: _SummaryCard(
+                    label: s.minutes,
+                    value: '${data['totalMinutes']}',
+                    icon: Icons.timer_outlined,
+                    color: AppColors.info)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _AchievementSummaryBar(achievement: achievement, strings: s),
       ],
     );
   }
@@ -219,6 +226,63 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
+// ── Achievement Summary Bar ────────────────────────────────────────────────
+class _AchievementSummaryBar extends StatelessWidget {
+  const _AchievementSummaryBar(
+      {required this.achievement, required this.strings});
+  final double achievement;
+  final dynamic strings;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final s = strings;
+    final color = achievement >= 90
+        ? AppColors.scoreExcellent
+        : achievement >= 75
+            ? AppColors.scoreGood
+            : AppColors.scoreFair;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.flag_rounded, color: color, size: 16),
+          const SizedBox(width: 8),
+          Text(
+            s.locale == 'ko' ? '평균 목표 달성률' : 'Avg Goal Achievement',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: achievement / 100,
+                backgroundColor: color.withValues(alpha: 0.12),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                minHeight: 7,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            '${achievement.toInt()}%',
+            style: TextStyle(
+                color: color, fontWeight: FontWeight.w800, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Chart Card ─────────────────────────────────────────────────────────────
 class _ChartCard extends StatelessWidget {
   const _ChartCard(
@@ -251,11 +315,31 @@ class _ChartCard extends StatelessWidget {
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
                   fontSize: 12)),
           const SizedBox(height: 20),
-          SizedBox(height: 160, child: chart),
+          SizedBox(height: 180, child: chart),
         ],
       ),
     );
   }
+}
+
+// ── Shared chart helpers ───────────────────────────────────────────────────
+double _niceMax(List<double> values, double base) {
+  if (values.isEmpty) return base;
+  final max = values.reduce((a, b) => a > b ? a : b);
+  return ((max * 1.15) / base).ceil() * base;
+}
+
+double _niceInterval(double maxY, int steps) =>
+    ((maxY / steps) / 5).ceil() * 5;
+
+Widget _bottomLabel(
+    double v, List<String> labels, TextStyle style, int step) {
+  final i = v.toInt();
+  if (i < 0 || i >= labels.length || i % step != 0) return const SizedBox();
+  return Padding(
+    padding: const EdgeInsets.only(top: 6),
+    child: Text(labels[i], style: style),
+  );
 }
 
 // ── Posture Line Chart ─────────────────────────────────────────────────────
@@ -266,42 +350,39 @@ class _PostureLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor =
-        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4);
+    final theme = Theme.of(context);
+    final textStyle = TextStyle(
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+        fontSize: 10);
+    final step = labels.length > 8 ? 2 : 1;
+
     return LineChart(LineChartData(
-      minY: 60,
+      minY: 55,
       maxY: 100,
       gridData: FlGridData(
         show: true,
         drawVerticalLine: false,
-        horizontalInterval: 10,
-        getDrawingHorizontalLine: (_) =>
-            FlLine(color: Theme.of(context).dividerColor, strokeWidth: 1),
+        horizontalInterval: 15,
+        getDrawingHorizontalLine: (_) => FlLine(
+            color: theme.dividerColor.withValues(alpha: 0.6), strokeWidth: 0.8),
       ),
       borderData: FlBorderData(show: false),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 32,
-            interval: 10,
-            getTitlesWidget: (v, _) => Text('${v.toInt()}',
-                style: TextStyle(color: textColor, fontSize: 10)),
+            reservedSize: 36,
+            interval: 15,
+            getTitlesWidget: (v, _) =>
+                Text('${v.toInt()}', style: textStyle),
           ),
         ),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
             interval: 1,
-            getTitlesWidget: (v, _) {
-              final i = v.toInt();
-              if (i < 0 || i >= labels.length) return const SizedBox();
-              return Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(labels[i],
-                    style: TextStyle(color: textColor, fontSize: 10)),
-              );
-            },
+            getTitlesWidget: (v, _) =>
+                _bottomLabel(v, labels, textStyle, step),
           ),
         ),
         rightTitles:
@@ -317,16 +398,25 @@ class _PostureLineChart extends StatelessWidget {
               .map((e) => FlSpot(e.key.toDouble(), e.value))
               .toList(),
           isCurved: true,
+          curveSmoothness: 0.35,
           color: AppColors.primary,
-          barWidth: 3,
-          dotData: const FlDotData(show: false),
+          barWidth: 2.5,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
+              radius: 3,
+              color: AppColors.primary,
+              strokeColor: Colors.white,
+              strokeWidth: 1.5,
+            ),
+          ),
           belowBarData: BarAreaData(
             show: true,
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                AppColors.primary.withValues(alpha: 0.3),
+                AppColors.primary.withValues(alpha: 0.22),
                 AppColors.primary.withValues(alpha: 0.0),
               ],
             ),
@@ -345,37 +435,41 @@ class _RepsBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor =
-        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4);
+    final theme = Theme.of(context);
+    final textStyle = TextStyle(
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+        fontSize: 10);
+    final step = labels.length > 8 ? 2 : 1;
+
+    final maxY = _niceMax(reps, 50);
+    final yInterval = _niceInterval(maxY, 4).toDouble();
+
     return BarChart(BarChartData(
+      maxY: maxY,
       gridData: FlGridData(
         show: true,
         drawVerticalLine: false,
-        getDrawingHorizontalLine: (_) =>
-            FlLine(color: Theme.of(context).dividerColor, strokeWidth: 1),
+        horizontalInterval: yInterval,
+        getDrawingHorizontalLine: (_) => FlLine(
+            color: theme.dividerColor.withValues(alpha: 0.6), strokeWidth: 0.8),
       ),
       borderData: FlBorderData(show: false),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 32,
-            getTitlesWidget: (v, _) => Text('${v.toInt()}',
-                style: TextStyle(color: textColor, fontSize: 10)),
+            reservedSize: 40,
+            interval: yInterval,
+            getTitlesWidget: (v, _) =>
+                Text('${v.toInt()}', style: textStyle),
           ),
         ),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            getTitlesWidget: (v, _) {
-              final i = v.toInt();
-              if (i < 0 || i >= labels.length) return const SizedBox();
-              return Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(labels[i],
-                    style: TextStyle(color: textColor, fontSize: 10)),
-              );
-            },
+            interval: 1,
+            getTitlesWidget: (v, _) =>
+                _bottomLabel(v, labels, textStyle, step),
           ),
         ),
         rightTitles:
@@ -392,8 +486,9 @@ class _RepsBarChart extends StatelessWidget {
                   BarChartRodData(
                     toY: e.value,
                     gradient: AppColors.orangeGradient,
-                    width: 12,
-                    borderRadius: BorderRadius.circular(4),
+                    width: labels.length > 8 ? 8 : 14,
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(5)),
                   ),
                 ],
               ))
@@ -411,38 +506,42 @@ class _WorkoutTimeLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor =
-        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4);
+    final theme = Theme.of(context);
+    final textStyle = TextStyle(
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+        fontSize: 10);
+    final step = labels.length > 8 ? 2 : 1;
+
+    final maxY = _niceMax(minutes, 50);
+    final yInterval = _niceInterval(maxY, 4).toDouble();
+
     return LineChart(LineChartData(
+      minY: 0,
+      maxY: maxY,
       gridData: FlGridData(
         show: true,
         drawVerticalLine: false,
-        getDrawingHorizontalLine: (_) =>
-            FlLine(color: Theme.of(context).dividerColor, strokeWidth: 1),
+        horizontalInterval: yInterval,
+        getDrawingHorizontalLine: (_) => FlLine(
+            color: theme.dividerColor.withValues(alpha: 0.6), strokeWidth: 0.8),
       ),
       borderData: FlBorderData(show: false),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 32,
-            getTitlesWidget: (v, _) => Text('${v.toInt()}',
-                style: TextStyle(color: textColor, fontSize: 10)),
+            reservedSize: 40,
+            interval: yInterval,
+            getTitlesWidget: (v, _) =>
+                Text('${v.toInt()}', style: textStyle),
           ),
         ),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
             interval: 1,
-            getTitlesWidget: (v, _) {
-              final i = v.toInt();
-              if (i < 0 || i >= labels.length) return const SizedBox();
-              return Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(labels[i],
-                    style: TextStyle(color: textColor, fontSize: 10)),
-              );
-            },
+            getTitlesWidget: (v, _) =>
+                _bottomLabel(v, labels, textStyle, step),
           ),
         ),
         rightTitles:
@@ -458,8 +557,9 @@ class _WorkoutTimeLineChart extends StatelessWidget {
               .map((e) => FlSpot(e.key.toDouble(), e.value))
               .toList(),
           isCurved: true,
+          curveSmoothness: 0.35,
           color: AppColors.info,
-          barWidth: 3,
+          barWidth: 2.5,
           dotData: FlDotData(
             show: true,
             getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
@@ -475,7 +575,7 @@ class _WorkoutTimeLineChart extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                AppColors.info.withValues(alpha: 0.25),
+                AppColors.info.withValues(alpha: 0.2),
                 AppColors.info.withValues(alpha: 0.0),
               ],
             ),
@@ -586,16 +686,36 @@ class _RecentRecordsSection extends StatelessWidget {
                               fontSize: 14,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            r.totalReps > 0
-                                ? '${r.totalReps} ${s.reps}'
-                                : r.durationFormatted,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.45),
+                          const SizedBox(height: 3),
+                          if (r.targetReps > 0)
+                            Row(
+                              children: [
+                                Icon(Icons.flag_rounded,
+                                    size: 10,
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.4)),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '${r.achievement}%',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.55),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Text(
+                              r.totalReps > 0
+                                  ? '${r.totalReps} ${s.reps}'
+                                  : r.durationFormatted,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.45),
+                              ),
                             ),
-                          ),
                         ],
                       ),
                       const SizedBox(width: 6),
