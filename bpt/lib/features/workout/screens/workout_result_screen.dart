@@ -41,8 +41,9 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
         CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
     _animCtrl.forward();
 
+    final isHistory = widget.result['isHistory'] as bool? ?? false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(workoutProvider.notifier).reset();
+      if (!isHistory) ref.read(workoutProvider.notifier).reset();
     });
   }
 
@@ -68,6 +69,8 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
     final s = ref.watch(appStringsProvider);
     final r = widget.result;
 
+    final isHistory = r['isHistory'] as bool? ?? false;
+    final date = r['date'] as DateTime?;
     final exerciseName = s.locale == 'ko'
         ? (r['exerciseNameKr'] as String? ?? r['exerciseName'] as String? ?? '')
         : (r['exerciseName'] as String? ?? '');
@@ -93,20 +96,30 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
                 ? AppColors.scoreFair
                 : AppColors.scorePoor;
 
+    String appBarTitle = s.workoutComplete;
+    if (isHistory && date != null) {
+      appBarTitle = '${date.month}/${date.day}/${date.year}  •  $exerciseName';
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(s.workoutComplete),
+        title: Text(appBarTitle),
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          onPressed: () => context.go(RouteConstants.home),
+          icon: Icon(isHistory
+              ? Icons.arrow_back_ios_rounded
+              : Icons.close_rounded),
+          onPressed: () =>
+              isHistory ? context.pop() : context.go(RouteConstants.home),
         ),
-        actions: [
-          TextButton(
-            onPressed: () =>
-                context.push(RouteConstants.exerciseSelection),
-            child: Text(s.againBtn),
-          ),
-        ],
+        actions: isHistory
+            ? null
+            : [
+                TextButton(
+                  onPressed: () =>
+                      context.push(RouteConstants.exerciseSelection),
+                  child: Text(s.againBtn),
+                ),
+              ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -154,23 +167,36 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
                 _FeedbackSection(feedbacks: feedbacks, strings: s),
                 const SizedBox(height: 24),
               ],
-              ElevatedButton.icon(
-                onPressed: () =>
-                    context.push(RouteConstants.exerciseSelection),
-                icon: const Icon(Icons.replay_rounded),
-                label: Text(s.startNewWorkout),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => context.go(RouteConstants.home),
-                icon: const Icon(Icons.home_outlined),
-                label: Text(s.backToHome),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 52),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+              if (isHistory) ...[
+                OutlinedButton.icon(
+                  onPressed: () => context.pop(),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: Text(s.back),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
                 ),
-              ),
+              ] else ...[
+                ElevatedButton.icon(
+                  onPressed: () =>
+                      context.push(RouteConstants.exerciseSelection),
+                  icon: const Icon(Icons.replay_rounded),
+                  label: Text(s.startNewWorkout),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => context.go(RouteConstants.home),
+                  icon: const Icon(Icons.home_outlined),
+                  label: Text(s.backToHome),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ],
               const SizedBox(height: 40),
             ],
           ),

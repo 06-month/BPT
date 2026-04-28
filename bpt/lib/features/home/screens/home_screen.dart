@@ -382,70 +382,98 @@ class _RecentWorkoutTile extends StatelessWidget {
                 ? AppColors.scoreFair
                 : AppColors.scorePoor;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
-        borderRadius: BorderRadius.circular(14),
+    final ex = findExercise(record.exerciseId);
+
+    return GestureDetector(
+      onTap: () => context.push(
+        RouteConstants.workoutResult,
+        extra: {
+          'exerciseId': record.exerciseId,
+          'exerciseName': record.exerciseName,
+          'exerciseNameKr': ex.nameKr,
+          'totalReps': record.totalReps,
+          'correctReps': record.correctReps,
+          'incorrectReps': record.incorrectReps,
+          'elapsedSeconds': record.durationSeconds,
+          'postureScore': record.postureScore,
+          'feedbackHistory': record.feedbackNotes,
+          'targetSets': 0,
+          'isHistory': true,
+          'date': record.date,
+        },
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkCard : AppColors.lightCard,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: ex.accentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Image.asset(ex.imagePath),
+              ),
             ),
-            child: const Icon(Icons.fitness_center_rounded,
-                color: AppColors.primary, size: 26),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    record.exerciseName,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    record.totalReps > 0
+                        ? '${record.totalReps} ${s.reps}  •  ${record.durationFormatted}'
+                        : record.durationFormatted,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.55),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  record.exerciseName,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  '${score.toInt()}%',
+                  style: TextStyle(
+                    color: scoreColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
-                  record.totalReps > 0
-                      ? '${record.totalReps} ${s.reps}  •  ${record.durationFormatted}'
-                      : record.durationFormatted,
+                  _timeAgo(record.date, s),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.55),
+                        .withValues(alpha: 0.45),
                   ),
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${score.toInt()}%',
-                style: TextStyle(
-                  color: scoreColor,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _timeAgo(record.date, s),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface
-                      .withValues(alpha: 0.45),
-                ),
-              ),
-            ],
-          ),
-        ],
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right_rounded,
+                color:
+                    theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                size: 18),
+          ],
+        ),
       ),
     );
   }
