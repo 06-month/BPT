@@ -7,6 +7,17 @@ import '../../../models/workout_record_model.dart';
 
 final currentUserProvider = Provider<UserModel>((ref) => mockUser);
 
+final weeklyWorkoutGoalProvider = StateProvider<int>((ref) => 5);
+
+final weeklyWorkoutsProvider = Provider<int>((ref) {
+  final now = DateTime.now();
+  final weekStart = DateTime(now.year, now.month, now.day)
+      .subtract(Duration(days: now.weekday - 1));
+  return mockWorkoutRecords
+      .where((r) => !r.date.isBefore(weekStart))
+      .length;
+});
+
 final recentRecordsProvider = Provider<List<WorkoutRecordModel>>(
   (ref) => mockWorkoutRecords.take(3).toList(),
 );

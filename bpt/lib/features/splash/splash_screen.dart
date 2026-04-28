@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/route_constants.dart';
 import '../../core/theme/app_colors.dart';
+import '../auth/providers/auth_provider.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _fadeAnim;
@@ -27,7 +29,13 @@ class _SplashScreenState extends State<SplashScreen>
     _ctrl.forward();
 
     Future.delayed(const Duration(milliseconds: 2200), () {
-      if (mounted) context.go(RouteConstants.login);
+      if (!mounted) return;
+      final autoLogin = ref.read(autoLoginProvider);
+      if (autoLogin) {
+        ref.read(authNotifierProvider).autoLogin();
+      } else {
+        context.go(RouteConstants.login);
+      }
     });
   }
 

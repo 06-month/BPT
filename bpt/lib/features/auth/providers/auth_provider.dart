@@ -58,6 +58,12 @@ class AuthNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
+  void autoLogin() {
+    _isLoggedIn = true;
+    _error = null;
+    notifyListeners();
+  }
+
   void logout() {
     _isLoggedIn = false;
     _error = null;
@@ -73,3 +79,5 @@ class AuthNotifier extends ChangeNotifier {
 final authNotifierProvider = ChangeNotifierProvider<AuthNotifier>(
   (ref) => AuthNotifier(),
 );
+
+final autoLoginProvider = StateProvider<bool>((ref) => false);
