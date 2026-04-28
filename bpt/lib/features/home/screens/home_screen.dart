@@ -6,8 +6,20 @@ import '../../../core/constants/route_constants.dart';
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/mock_data.dart';
+import '../../../models/exercise_model.dart';
 import '../../../models/workout_record_model.dart';
+import '../../../features/workout/providers/workout_provider.dart';
 import '../providers/home_provider.dart';
+
+// ── File-level state for home exercise picker ──────────────────────────────
+final _selectedExIdProvider =
+    StateProvider<String>((ref) => mockExercises.first.id);
+final _homeRepsProvider = StateProvider<int>(
+    (ref) => mockExercises.first.defaultReps == 0
+        ? mockExercises.first.defaultDurationSeconds
+        : mockExercises.first.defaultReps);
+final _homeSetsProvider =
+    StateProvider<int>((ref) => mockExercises.first.defaultSets);
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -24,20 +36,16 @@ class HomeScreen extends ConsumerWidget {
         slivers: [
           _BPTAppBar(name: user.name, strings: s),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 const SizedBox(height: 20),
                 _TodaySummaryCard(summary: summary, strings: s),
-                const SizedBox(height: 24),
-                _StartWorkoutBanner(
-                  strings: s,
-                  onTap: () => context.push(RouteConstants.exerciseSelection),
-                ),
                 const SizedBox(height: 28),
                 _SectionHeader(title: s.streak, trailing: '🔥'),
                 const SizedBox(height: 12),
-                _StreakRow(streak: summary['streak'] as int, strings: s),
+                _StreakRow(
+                    streak: summary['streak'] as int, strings: s),
                 const SizedBox(height: 28),
                 _SectionHeader(
                   title: s.recentWorkouts,
@@ -45,20 +53,20 @@ class HomeScreen extends ConsumerWidget {
                   onTrailingTap: () => context.go(RouteConstants.report),
                 ),
                 const SizedBox(height: 12),
-                ...recent.map((r) => _RecentWorkoutTile(record: r, strings: s)),
-                const SizedBox(height: 24),
-                _SectionHeader(title: s.exercises),
+                ...recent.map(
+                    (r) => _RecentWorkoutTile(record: r, strings: s)),
+                const SizedBox(height: 28),
+                _SectionHeader(title: s.selectExercise),
                 const SizedBox(height: 12),
-                _ExerciseQuickGrid(
-                  strings: s,
-                  onSelect: (id) =>
-                      context.push(RouteConstants.workout, extra: id),
-                ),
+                _ExercisePickerGrid(strings: s),
+                const SizedBox(height: 16),
+                _WorkoutConfigPanel(strings: s),
               ]),
             ),
           ),
         ],
       ),
+      bottomSheet: _StartButton(strings: s),
     );
   }
 }
@@ -85,7 +93,7 @@ class _BPTAppBar extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      expandedHeight: 80,
+      expandedHeight: 84,
       flexibleSpace: FlexibleSpaceBar(
         background: SafeArea(
           child: Padding(
@@ -100,8 +108,8 @@ class _BPTAppBar extends StatelessWidget {
                     Text(
                       _greeting(strings),
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.55),
                       ),
                     ),
                     Text(
@@ -114,14 +122,14 @@ class _BPTAppBar extends StatelessWidget {
                 ),
                 const Spacer(),
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: 48,
+                  height: 48,
                   decoration: const BoxDecoration(
                     gradient: AppColors.primaryGradient,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.fitness_center_rounded,
-                      color: Colors.white, size: 20),
+                      color: Colors.white, size: 24),
                 ),
               ],
             ),
@@ -134,7 +142,8 @@ class _BPTAppBar extends StatelessWidget {
 
 // ── Today Summary Card ─────────────────────────────────────────────────────
 class _TodaySummaryCard extends StatelessWidget {
-  const _TodaySummaryCard({required this.summary, required this.strings});
+  const _TodaySummaryCard(
+      {required this.summary, required this.strings});
   final Map<String, dynamic> summary;
   final dynamic strings;
 
@@ -142,7 +151,7 @@ class _TodaySummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = strings;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
         borderRadius: BorderRadius.circular(20),
@@ -161,11 +170,11 @@ class _TodaySummaryCard extends StatelessWidget {
             s.todaySummary,
             style: const TextStyle(
               color: Colors.white70,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -212,87 +221,23 @@ class _StatItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: Colors.white70, size: 18),
+        Icon(icon, color: Colors.white70, size: 24),
         const SizedBox(height: 6),
         Text(
           value,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 2),
         Text(label,
-            style: const TextStyle(color: Colors.white60, fontSize: 11)),
+            style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 12,
+                fontWeight: FontWeight.w500)),
       ],
-    );
-  }
-}
-
-// ── Start Workout Banner ───────────────────────────────────────────────────
-class _StartWorkoutBanner extends StatelessWidget {
-  const _StartWorkoutBanner({required this.strings, required this.onTap});
-  final dynamic strings;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final s = strings;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : AppColors.lightCard,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.play_arrow_rounded,
-                  color: Colors.white, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    s.readyToTrain,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    s.aiRealtime,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.55),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                size: 16, color: AppColors.primary),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -310,7 +255,7 @@ class _StreakRow extends StatelessWidget {
     final s = strings;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : AppColors.lightCard,
         borderRadius: BorderRadius.circular(16),
@@ -324,7 +269,7 @@ class _StreakRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.local_fire_department_rounded,
-                color: AppColors.secondary, size: 24),
+                color: AppColors.secondary, size: 28),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -339,8 +284,8 @@ class _StreakRow extends StatelessWidget {
                 Text(
                   s.keepChain,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    color: theme.colorScheme.onSurface
+                        .withValues(alpha: 0.5),
                   ),
                 ),
               ],
@@ -350,8 +295,8 @@ class _StreakRow extends StatelessWidget {
             children: List.generate(
               7,
               (i) => Container(
-                width: 8,
-                height: 8,
+                width: 10,
+                height: 10,
                 margin: const EdgeInsets.only(left: 4),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -399,7 +344,7 @@ class _SectionHeader extends StatelessWidget {
               style: const TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontSize: 14,
               ),
             ),
           ),
@@ -410,7 +355,8 @@ class _SectionHeader extends StatelessWidget {
 
 // ── Recent Workout Tile ────────────────────────────────────────────────────
 class _RecentWorkoutTile extends StatelessWidget {
-  const _RecentWorkoutTile({required this.record, required this.strings});
+  const _RecentWorkoutTile(
+      {required this.record, required this.strings});
   final WorkoutRecordModel record;
   final dynamic strings;
 
@@ -438,7 +384,7 @@ class _RecentWorkoutTile extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : AppColors.lightCard,
         borderRadius: BorderRadius.circular(14),
@@ -446,16 +392,16 @@ class _RecentWorkoutTile extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.fitness_center_rounded,
-                color: AppColors.primary, size: 20),
+                color: AppColors.primary, size: 26),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,16 +409,16 @@ class _RecentWorkoutTile extends StatelessWidget {
                 Text(
                   record.exerciseName,
                   style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
                   record.totalReps > 0
                       ? '${record.totalReps} ${s.reps}  •  ${record.durationFormatted}'
                       : record.durationFormatted,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    color: theme.colorScheme.onSurface
+                        .withValues(alpha: 0.55),
                   ),
                 ),
               ],
@@ -485,17 +431,16 @@ class _RecentWorkoutTile extends StatelessWidget {
                 '${score.toInt()}%',
                 style: TextStyle(
                   color: scoreColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 _timeAgo(record.date, s),
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.4),
-                  fontSize: 11,
+                  color: theme.colorScheme.onSurface
+                      .withValues(alpha: 0.45),
                 ),
               ),
             ],
@@ -506,16 +451,16 @@ class _RecentWorkoutTile extends StatelessWidget {
   }
 }
 
-// ── Exercise Quick Grid ────────────────────────────────────────────────────
-class _ExerciseQuickGrid extends StatelessWidget {
-  const _ExerciseQuickGrid(
-      {required this.onSelect, required this.strings});
-  final void Function(String id) onSelect;
+// ── Exercise Picker Grid ───────────────────────────────────────────────────
+class _ExercisePickerGrid extends ConsumerWidget {
+  const _ExercisePickerGrid({required this.strings});
   final dynamic strings;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final s = strings;
+    final selectedId = ref.watch(_selectedExIdProvider);
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -523,11 +468,12 @@ class _ExerciseQuickGrid extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.5,
+        childAspectRatio: 1.35,
       ),
       itemCount: mockExercises.length,
       itemBuilder: (context, i) {
         final ex = mockExercises[i];
+        final isSelected = ex.id == selectedId;
         final theme = Theme.of(context);
         final isDark = theme.brightness == Brightness.dark;
         final diffLabel = ex.difficultyLabel == 'Beginner'
@@ -535,42 +481,276 @@ class _ExerciseQuickGrid extends StatelessWidget {
             : ex.difficultyLabel == 'Intermediate'
                 ? s.intermediate
                 : s.advanced;
+
         return GestureDetector(
-          onTap: () => onSelect(ex.id),
-          child: Container(
-            padding: const EdgeInsets.all(14),
+          onTap: () {
+            ref.read(_selectedExIdProvider.notifier).state = ex.id;
+            ref.read(_homeRepsProvider.notifier).state =
+                ex.defaultReps == 0
+                    ? ex.defaultDurationSeconds
+                    : ex.defaultReps;
+            ref.read(_homeSetsProvider.notifier).state =
+                ex.defaultSets;
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
-              borderRadius: BorderRadius.circular(14),
+              color: isSelected
+                  ? ex.accentColor.withValues(alpha: 0.12)
+                  : (isDark ? AppColors.darkCard : AppColors.lightCard),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected
+                    ? ex.accentColor
+                    : Colors.transparent,
+                width: 2,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: ex.accentColor.withValues(alpha: 0.2),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ]
+                  : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(ex.icon, color: ex.accentColor, size: 24),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
-                    Text(
-                      s.locale == 'ko' ? ex.nameKr : ex.name,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    Text(
-                      diffLabel,
-                      style: TextStyle(
-                        color: ex.accentColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    Icon(ex.icon,
+                        color: ex.accentColor, size: 30),
+                    const Spacer(),
+                    if (isSelected)
+                      Icon(Icons.check_circle_rounded,
+                          color: ex.accentColor, size: 20),
                   ],
+                ),
+                const Spacer(),
+                Text(
+                  s.locale == 'ko' ? ex.nameKr : ex.name,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  diffLabel,
+                  style: TextStyle(
+                    color: ex.accentColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+// ── Workout Config Panel ───────────────────────────────────────────────────
+class _WorkoutConfigPanel extends ConsumerWidget {
+  const _WorkoutConfigPanel({required this.strings});
+  final dynamic strings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = strings;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final selectedId = ref.watch(_selectedExIdProvider);
+    final reps = ref.watch(_homeRepsProvider);
+    final sets = ref.watch(_homeSetsProvider);
+    final ex =
+        mockExercises.firstWhere((e) => e.id == selectedId);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            s.configureWorkout,
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 18),
+          if (ex.type == ExerciseType.reps)
+            _StepControl(
+              label: s.repsPerSet,
+              value: reps,
+              min: 5,
+              max: 50,
+              step: 1,
+              onChanged: (v) =>
+                  ref.read(_homeRepsProvider.notifier).state = v,
+            )
+          else
+            _StepControl(
+              label: s.durationSeconds,
+              value: reps,
+              min: 10,
+              max: 300,
+              step: 10,
+              onChanged: (v) =>
+                  ref.read(_homeRepsProvider.notifier).state = v,
+            ),
+          const SizedBox(height: 14),
+          _StepControl(
+            label: s.sets,
+            value: sets,
+            min: 1,
+            max: 10,
+            step: 1,
+            onChanged: (v) =>
+                ref.read(_homeSetsProvider.notifier).state = v,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepControl extends StatelessWidget {
+  const _StepControl({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.step,
+    required this.onChanged,
+  });
+  final String label;
+  final int value;
+  final int min;
+  final int max;
+  final int step;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(
+            child: Text(label, style: theme.textTheme.bodyMedium)),
+        Row(
+          children: [
+            _CircleBtn(
+              icon: Icons.remove,
+              onTap:
+                  value > min ? () => onChanged(value - step) : null,
+            ),
+            const SizedBox(width: 14),
+            SizedBox(
+              width: 40,
+              child: Text(
+                '$value',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ),
+            const SizedBox(width: 14),
+            _CircleBtn(
+              icon: Icons.add,
+              onTap:
+                  value < max ? () => onChanged(value + step) : null,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CircleBtn extends StatelessWidget {
+  const _CircleBtn({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: enabled
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : Colors.grey.withValues(alpha: 0.08),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled ? AppColors.primary : Colors.grey,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Start Button (bottom sheet) ────────────────────────────────────────────
+class _StartButton extends ConsumerWidget {
+  const _StartButton({required this.strings});
+  final dynamic strings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = strings;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final selectedId = ref.watch(_selectedExIdProvider);
+    final reps = ref.watch(_homeRepsProvider);
+    final sets = ref.watch(_homeSetsProvider);
+    final ex =
+        mockExercises.firstWhere((e) => e.id == selectedId);
+    final exName = s.locale == 'ko' ? ex.nameKr : ex.name;
+    final unit = ex.type == ExerciseType.duration ? 's' : ' ${s.reps}';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        border: Border(
+          top: BorderSide(
+            color: isDark
+                ? AppColors.darkDivider
+                : AppColors.lightDivider,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: ElevatedButton.icon(
+          onPressed: () {
+            ref.read(workoutProvider.notifier).initialize(
+                  selectedId,
+                  reps,
+                  sets,
+                );
+            context.push(RouteConstants.workout, extra: selectedId);
+          },
+          icon: const Icon(Icons.play_arrow_rounded, size: 26),
+          label: Text(
+              '${s.start} $exName  •  $sets × $reps$unit'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: ex.accentColor,
+          ),
+        ),
+      ),
     );
   }
 }

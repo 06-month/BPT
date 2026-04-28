@@ -59,7 +59,7 @@ class _BPTNavBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 60,
+          height: 68,
           child: Row(
             children: [
               _NavItem(
@@ -125,16 +125,16 @@ class _NavItem extends StatelessWidget {
                 selected ? activeIcon : icon,
                 key: ValueKey(selected),
                 color: color,
-                size: 24,
+                size: 28,
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight:
-                    selected ? FontWeight.w700 : FontWeight.w400,
+                    selected ? FontWeight.w700 : FontWeight.w500,
                 color: color,
               ),
             ),
