@@ -22,6 +22,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _loginIdCtrl = TextEditingController();
   final _loginPasswordCtrl = TextEditingController();
   bool _obscureLogin = true;
+  bool _autoLogin = false;
 
   // Sign-up
   final _usernameCtrl = TextEditingController();
@@ -91,6 +92,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (!(_loginFormKey.currentState?.validate() ?? false)) return;
       await auth.login(
           _loginIdCtrl.text.trim(), _loginPasswordCtrl.text.trim());
+      if (auth.isLoggedIn) {
+        ref.read(autoLoginProvider.notifier).state = _autoLogin;
+      }
     }
   }
 
@@ -193,9 +197,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             validator: (v) =>
                 v == null || v.length < 6 ? s.minSixChars : null,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: Checkbox(
+                  value: _autoLogin,
+                  onChanged: (v) =>
+                      setState(() => _autoLogin = v ?? false),
+                  activeColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4)),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () =>
+                    setState(() => _autoLogin = !_autoLogin),
+                child: Text(
+                  s.locale == 'ko' ? '자동 로그인' : 'Remember me',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.65),
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           if (auth.error != null) _buildErrorBox(auth.error!),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
           _buildCTA(auth, s),
         ],
       ),

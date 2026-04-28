@@ -385,7 +385,7 @@ class _StatsRow extends StatelessWidget {
         Expanded(
             child: _StatCard(
                 label: s.dayStreak,
-                value: '${user.streakDays}🔥',
+                value: '${user.streakDays}',
                 icon: Icons.local_fire_department_rounded,
                 color: AppColors.secondary)),
         const SizedBox(width: 12),
