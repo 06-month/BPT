@@ -40,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E1A),
+      backgroundColor: Colors.white,
       body: FadeTransition(
         opacity: _fadeAnim,
         child: Center(
@@ -52,13 +52,15 @@ class _SplashScreenState extends State<SplashScreen>
                 width: MediaQuery.of(context).size.width * 0.75,
               ),
               const SizedBox(height: 40),
-              const SizedBox(
+              SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppColors.primary),
+                  backgroundColor:
+                      AppColors.primary.withValues(alpha: 0.15),
                 ),
               ),
             ],
