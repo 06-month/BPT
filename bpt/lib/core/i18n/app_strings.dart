@@ -37,6 +37,27 @@ class AppStrings {
   final String validEmail;
   final String signInSubtitle;
   final String signUpSubtitle;
+  final String username;
+  final String confirmPassword;
+  final String checkDuplicate;
+  final String duplicateAvailable;
+  final String duplicateTaken;
+  final String duplicateCheckRequired;
+  final String gender;
+  final String male;
+  final String female;
+  final String heightCm;
+  final String weightKg;
+  final String workoutGoal;
+  final String goalDiet;
+  final String goalStrength;
+  final String goalPosture;
+  final String passwordMismatch;
+  final String idRequired;
+  final String accountInfo;
+  final String personalInfo;
+  final String bodyStats;
+  final String required;
 
   // ── Home ─────────────────────────────────────────────────────────────────
   final String greetingMorning;
@@ -165,6 +186,27 @@ class AppStrings {
     required this.validEmail,
     required this.signInSubtitle,
     required this.signUpSubtitle,
+    required this.username,
+    required this.confirmPassword,
+    required this.checkDuplicate,
+    required this.duplicateAvailable,
+    required this.duplicateTaken,
+    required this.duplicateCheckRequired,
+    required this.gender,
+    required this.male,
+    required this.female,
+    required this.heightCm,
+    required this.weightKg,
+    required this.workoutGoal,
+    required this.goalDiet,
+    required this.goalStrength,
+    required this.goalPosture,
+    required this.passwordMismatch,
+    required this.idRequired,
+    required this.accountInfo,
+    required this.personalInfo,
+    required this.bodyStats,
+    required this.required,
     required this.greetingMorning,
     required this.greetingAfternoon,
     required this.greetingEvening,
@@ -283,6 +325,27 @@ class AppStrings {
     validEmail: 'Enter valid email',
     signInSubtitle: 'Sign in to continue training',
     signUpSubtitle: 'Start your AI-powered fitness journey',
+    username: 'Username',
+    confirmPassword: 'Confirm Password',
+    checkDuplicate: 'Check',
+    duplicateAvailable: 'Username available',
+    duplicateTaken: 'Username already taken',
+    duplicateCheckRequired: 'Please check username availability',
+    gender: 'Gender (optional)',
+    male: 'Male',
+    female: 'Female',
+    heightCm: 'Height (cm)',
+    weightKg: 'Weight (kg)',
+    workoutGoal: 'Workout Goal',
+    goalDiet: 'Diet',
+    goalStrength: 'Strength',
+    goalPosture: 'Posture Correction',
+    passwordMismatch: 'Passwords do not match',
+    idRequired: 'Username is required',
+    accountInfo: 'Account',
+    personalInfo: 'Personal Info',
+    bodyStats: 'Body Stats',
+    required: 'Required',
     greetingMorning: 'Good morning,',
     greetingAfternoon: 'Good afternoon,',
     greetingEvening: 'Good evening,',
@@ -401,6 +464,27 @@ class AppStrings {
     validEmail: '유효한 이메일을 입력해주세요',
     signInSubtitle: '로그인하여 트레이닝을 계속하세요',
     signUpSubtitle: 'AI 피트니스 여정을 시작하세요',
+    username: '아이디',
+    confirmPassword: '비밀번호 확인',
+    checkDuplicate: '중복확인',
+    duplicateAvailable: '사용 가능한 아이디입니다',
+    duplicateTaken: '이미 사용 중인 아이디입니다',
+    duplicateCheckRequired: '아이디 중복확인을 해주세요',
+    gender: '성별 (선택)',
+    male: '남성',
+    female: '여성',
+    heightCm: '키 (cm)',
+    weightKg: '몸무게 (kg)',
+    workoutGoal: '운동 목적',
+    goalDiet: '다이어트',
+    goalStrength: '근력 향상',
+    goalPosture: '자세 교정',
+    passwordMismatch: '비밀번호가 일치하지 않습니다',
+    idRequired: '아이디를 입력해주세요',
+    accountInfo: '계정 정보',
+    personalInfo: '개인 정보',
+    bodyStats: '신체 정보',
+    required: '필수 입력',
     greetingMorning: '좋은 아침이에요,',
     greetingAfternoon: '안녕하세요,',
     greetingEvening: '수고하셨어요,',
