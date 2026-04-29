@@ -7,6 +7,7 @@ import '../../../core/constants/route_constants.dart';
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/mock_data.dart';
+import '../../../features/home/providers/home_provider.dart';
 import '../providers/report_provider.dart';
 
 class ReportScreen extends ConsumerWidget {
@@ -587,7 +588,7 @@ class _WorkoutTimeLineChart extends StatelessWidget {
 }
 
 // ── Recent Records ─────────────────────────────────────────────────────────
-class _RecentRecordsSection extends StatelessWidget {
+class _RecentRecordsSection extends ConsumerWidget {
   const _RecentRecordsSection({required this.strings});
   final dynamic strings;
 
@@ -600,10 +601,40 @@ class _RecentRecordsSection extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final s = strings;
+    final records = ref.watch(allRecordsProvider);
+
+    if (records.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(s.workoutHistory,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                s.locale == 'ko'
+                    ? '아직 운동 기록이 없어요'
+                    : 'No workout records yet',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,7 +643,7 @@ class _RecentRecordsSection extends StatelessWidget {
             style: theme.textTheme.titleMedium
                 ?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 12),
-        ...mockWorkoutRecords.map((r) {
+        ...records.map((r) {
               final scoreColor = r.postureScore >= 90
                   ? AppColors.scoreExcellent
                   : r.postureScore >= 75

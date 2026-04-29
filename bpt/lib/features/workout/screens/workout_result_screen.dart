@@ -6,6 +6,8 @@ import 'package:video_player/video_player.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../models/workout_record_model.dart';
+import '../../../services/workout_records_service.dart';
 import '../providers/workout_provider.dart';
 
 class WorkoutResultScreen extends ConsumerStatefulWidget {
@@ -43,8 +45,31 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
 
     final isHistory = widget.result['isHistory'] as bool? ?? false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!isHistory) ref.read(workoutProvider.notifier).reset();
+      if (!isHistory) {
+        ref.read(workoutProvider.notifier).reset();
+        _saveRecord();
+      }
     });
+  }
+
+  void _saveRecord() {
+    final r = widget.result;
+    final record = WorkoutRecordModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      exerciseId: r['exerciseId'] as String? ?? '',
+      exerciseName: r['exerciseName'] as String? ?? '',
+      date: DateTime.now(),
+      totalReps: r['totalReps'] as int? ?? 0,
+      correctReps: r['correctReps'] as int? ?? 0,
+      incorrectReps: r['incorrectReps'] as int? ?? 0,
+      durationSeconds: r['elapsedSeconds'] as int? ?? 0,
+      postureScore: (r['postureScore'] as num?)?.toDouble() ?? 0.0,
+      feedbackNotes:
+          (r['feedbackHistory'] as List?)?.cast<String>() ?? [],
+      targetReps: r['targetReps'] as int? ?? 0,
+      targetSets: r['targetSets'] as int? ?? 1,
+    );
+    ref.read(workoutRecordsProvider.notifier).addRecord(record);
   }
 
   void _initVideoPlayer() {
