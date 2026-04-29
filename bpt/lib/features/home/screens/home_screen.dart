@@ -39,7 +39,7 @@ class HomeScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                if ((summary['streak'] as int) >= 2)
+                if ((summary['streak'] as int) >= 1)
                   _StreakBanner(
                       streak: summary['streak'] as int, strings: s),
                 const SizedBox(height: 20),
@@ -51,12 +51,17 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: 28),
                 _SectionHeader(
                   title: s.recentWorkouts,
-                  trailing: s.seeAll,
-                  onTrailingTap: () => context.go(RouteConstants.report),
+                  trailing: recent.isEmpty ? null : s.seeAll,
+                  onTrailingTap: recent.isEmpty
+                      ? null
+                      : () => context.go(RouteConstants.report),
                 ),
                 const SizedBox(height: 12),
-                ...recent.map(
-                    (r) => _RecentWorkoutTile(record: r, strings: s)),
+                if (recent.isEmpty)
+                  _EmptyWorkoutState(strings: s)
+                else
+                  ...recent.map(
+                      (r) => _RecentWorkoutTile(record: r, strings: s)),
                 const SizedBox(height: 28),
                 _SectionHeader(title: s.selectExercise),
                 const SizedBox(height: 12),
@@ -244,15 +249,32 @@ class _StatItem extends StatelessWidget {
   }
 }
 
-// ── Streak Banner (맨 위, streak >= 2일 때만) ────────────────────────────────
+// ── Streak Banner (streak >= 1일 때 표시) ─────────────────────────────────
 class _StreakBanner extends StatelessWidget {
   const _StreakBanner({required this.streak, required this.strings});
   final int streak;
   final dynamic strings;
 
+  String _message(bool isKo) {
+    if (streak == 1) {
+      return isKo ? '오늘 첫 번째 운동! 열심히 해봅시다!' : 'First workout today! Let\'s go!';
+    }
+    if (streak <= 3) {
+      return isKo ? '$streak일 연속! 좋은 시작이에요' : '$streak-day streak! Great start!';
+    }
+    if (streak <= 6) {
+      return isKo ? '$streak일 연속! 잘 하고 있어요' : '$streak-day streak! Keep it up!';
+    }
+    if (streak < 14) {
+      return isKo ? '$streak일 연속! 대단해요!' : '$streak-day streak! Amazing!';
+    }
+    return isKo ? '$streak일 연속! 완전 최고예요!' : '$streak days straight! Legendary!';
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = strings;
+    final isKo = s.locale == 'ko';
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
@@ -269,9 +291,7 @@ class _StreakBanner extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              s.locale == 'ko'
-                  ? '$streak일 연속 운동 중! 잘 하고 있어요'
-                  : '$streak-day streak! Keep it up!',
+              _message(isKo),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -571,6 +591,50 @@ class _RecentWorkoutTile extends StatelessWidget {
                 size: 18),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Empty Workout State ────────────────────────────────────────────────────
+class _EmptyWorkoutState extends StatelessWidget {
+  const _EmptyWorkoutState({required this.strings});
+  final dynamic strings;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isKo = strings.locale == 'ko';
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.fitness_center_rounded,
+              size: 36,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
+          const SizedBox(height: 12),
+          Text(
+            isKo ? '아직 운동 기록이 없어요' : 'No workouts yet',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color:
+                  theme.colorScheme.onSurface.withValues(alpha: 0.45),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isKo ? '아래에서 운동을 선택하고 시작해봐요!' : 'Pick an exercise below and start!',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color:
+                  theme.colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
+          ),
+        ],
       ),
     );
   }

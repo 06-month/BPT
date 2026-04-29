@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/user_model.dart';
+import '../models/workout_record_model.dart';
 
 // Overridden in main.dart with the pre-initialized instance.
 final sharedPreferencesProvider = Provider<SharedPreferences>(
@@ -17,6 +20,7 @@ class LocalStorageService {
 
   static const _keyUser = 'bpt_user';
   static const _keyAutoLogin = 'bpt_auto_login';
+  static const _keyRecords = 'bpt_workout_records';
 
   LocalStorageService(this._prefs);
 
@@ -46,13 +50,36 @@ class LocalStorageService {
 
   bool loadAutoLogin() => _prefs.getBool(_keyAutoLogin) ?? false;
 
+  // ── Workout Records ───────────────────────────────────────────────────────
+  Future<void> saveRecords(List<WorkoutRecordModel> records) async {
+    final encoded = jsonEncode(records.map((r) => r.toJson()).toList());
+    await _prefs.setString(_keyRecords, encoded);
+  }
+
+  List<WorkoutRecordModel> loadRecords() {
+    final raw = _prefs.getString(_keyRecords);
+    if (raw == null) return [];
+    try {
+      final list = jsonDecode(raw) as List;
+      return list
+          .map((e) => WorkoutRecordModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> addRecord(WorkoutRecordModel record) async {
+    final existing = loadRecords();
+    existing.insert(0, record); // newest first
+    await saveRecords(existing);
+  }
+
   // ── Session ───────────────────────────────────────────────────────────────
-  /// Clears auto-login flag only (keeps user record for next login).
   Future<void> clearSession() async {
     await _prefs.setBool(_keyAutoLogin, false);
   }
 
-  /// Clears everything (full sign-out + delete account).
   Future<void> clearAll() async {
     await _prefs.remove(_keyUser);
     await _prefs.setBool(_keyAutoLogin, false);

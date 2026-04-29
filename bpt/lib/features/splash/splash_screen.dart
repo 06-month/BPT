@@ -36,8 +36,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final loggedIn =
         await ref.read(authNotifierProvider).tryAutoLogin();
     if (!mounted) return;
-    if (!loggedIn) context.go(RouteConstants.login);
-    // If loggedIn, GoRouter's refreshListenable redirects to home automatically.
+    context.go(loggedIn ? RouteConstants.home : RouteConstants.login);
   }
 
   @override
