@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../data/mock_data.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/home/providers/home_provider.dart';
 import '../providers/profile_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -370,27 +370,29 @@ class _HDivider extends StatelessWidget {
 }
 
 // ── Stats Row ──────────────────────────────────────────────────────────────
-class _StatsRow extends StatelessWidget {
+class _StatsRow extends ConsumerWidget {
   const _StatsRow({required this.user, required this.strings});
   final dynamic user;
   final dynamic strings;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final s = strings;
+    final totalWorkouts = ref.watch(allRecordsProvider).length;
+    final streak = ref.watch(streakDaysProvider);
     return Row(
       children: [
         Expanded(
             child: _StatCard(
                 label: s.totalWorkouts,
-                value: '${user.totalWorkouts}',
+                value: '$totalWorkouts',
                 icon: Icons.fitness_center_rounded,
                 color: AppColors.primary)),
         const SizedBox(width: 12),
         Expanded(
             child: _StatCard(
                 label: s.dayStreak,
-                value: '${user.streakDays}',
+                value: '$streak',
                 icon: Icons.local_fire_department_rounded,
                 color: AppColors.secondary)),
         const SizedBox(width: 12),
@@ -675,15 +677,16 @@ class _ToggleTile extends StatelessWidget {
 }
 
 // ── Workout History ────────────────────────────────────────────────────────
-class _WorkoutHistorySection extends StatelessWidget {
+class _WorkoutHistorySection extends ConsumerWidget {
   const _WorkoutHistorySection({required this.strings});
   final dynamic strings;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final s = strings;
+    final records = ref.watch(allRecordsProvider).take(4).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -697,56 +700,67 @@ class _WorkoutHistorySection extends StatelessWidget {
             color: isDark ? AppColors.darkCard : AppColors.lightCard,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Column(
-            children:
-                mockWorkoutRecords.take(4).toList().asMap().entries.map((e) {
-              final r = e.value;
-              final isLast = e.key == 3;
-              return Column(
-                children: [
-                  ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.fitness_center_rounded,
-                          color: AppColors.primary, size: 18),
-                    ),
-                    title: Text(r.exerciseName,
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600)),
-                    subtitle: Text(
-                      r.totalReps > 0
-                          ? '${r.totalReps} ${s.reps}  •  ${r.durationFormatted}'
-                          : r.durationFormatted,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.45),
-                      ),
-                    ),
-                    trailing: Text(
-                      '${r.postureScore.toInt()}%',
-                      style: TextStyle(
-                        color: r.postureScore >= 90
-                            ? AppColors.scoreExcellent
-                            : r.postureScore >= 75
-                                ? AppColors.scoreGood
-                                : AppColors.scoreFair,
-                        fontWeight: FontWeight.w700,
+          child: records.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 28),
+                  child: Center(
+                    child: Text(
+                      s.locale == 'ko' ? '아직 운동 기록이 없어요' : 'No workouts yet',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                       ),
                     ),
                   ),
-                  if (!isLast)
-                    Divider(
-                        height: 1, indent: 56, color: theme.dividerColor),
-                ],
-              );
-            }).toList(),
-          ),
+                )
+              : Column(
+                  children: records.asMap().entries.map((e) {
+                    final r = e.value;
+                    final isLast = e.key == records.length - 1;
+                    return Column(
+                      children: [
+                        ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.fitness_center_rounded,
+                                color: AppColors.primary, size: 18),
+                          ),
+                          title: Text(r.exerciseName,
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600)),
+                          subtitle: Text(
+                            r.totalReps > 0
+                                ? '${r.totalReps} ${s.reps}  •  ${r.durationFormatted}'
+                                : r.durationFormatted,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.45),
+                            ),
+                          ),
+                          trailing: Text(
+                            '${r.postureScore.toInt()}%',
+                            style: TextStyle(
+                              color: r.postureScore >= 90
+                                  ? AppColors.scoreExcellent
+                                  : r.postureScore >= 75
+                                      ? AppColors.scoreGood
+                                      : AppColors.scoreFair,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (!isLast)
+                          Divider(
+                              height: 1, indent: 56, color: theme.dividerColor),
+                      ],
+                    );
+                  }).toList(),
+                ),
         ),
       ],
     );
