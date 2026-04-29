@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../services/local_storage_service.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -91,21 +92,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     } else {
       if (!(_loginFormKey.currentState?.validate() ?? false)) return;
       await auth.login(
-          _loginIdCtrl.text.trim(), _loginPasswordCtrl.text.trim());
-      if (auth.isLoggedIn) {
-        ref.read(autoLoginProvider.notifier).state = _autoLogin;
-      }
+        _loginIdCtrl.text.trim(),
+        _loginPasswordCtrl.text.trim(),
+        rememberMe: _autoLogin,
+      );
     }
   }
 
   Future<void> _checkDuplicate() async {
-    if (_usernameCtrl.text.trim().isEmpty) return;
+    final username = _usernameCtrl.text.trim();
+    if (username.isEmpty) return;
     setState(() => _isCheckingId = true);
-    await Future.delayed(const Duration(milliseconds: 700));
+
+    final storage = ref.read(localStorageServiceProvider);
+    final existing = storage.loadUser();
+    final taken = existing != null && existing.username == username;
+
     setState(() {
       _isCheckingId = false;
       _idChecked = true;
-      _idAvailable = true;
+      _idAvailable = !taken;
     });
   }
 
@@ -230,7 +236,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             ],
           ),
           const SizedBox(height: 16),
-          if (auth.error != null) _buildErrorBox(auth.error!),
+          if (auth.error != null) _buildErrorBox(auth.error!, s),
           const SizedBox(height: 20),
           _buildCTA(auth, s),
         ],
@@ -491,7 +497,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             onTap: () => setState(() => _selectedGoal = 'posture'),
           ),
           const SizedBox(height: 12),
-          if (auth.error != null) _buildErrorBox(auth.error!),
+          if (auth.error != null) _buildErrorBox(auth.error!, s),
           const SizedBox(height: 28),
           _buildCTA(auth, s),
         ],
@@ -521,7 +527,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildErrorBox(String error) {
+  String _localizeError(String code, s) {
+    final isKo = s.locale == 'ko';
+    switch (code) {
+      case 'username_or_password_incorrect':
+        return isKo ? '아이디 또는 비밀번호가 올바르지 않아요.' : 'Username or password is incorrect.';
+      case 'username_already_exists':
+        return isKo ? '이미 사용 중인 아이디예요.' : 'This username is already taken.';
+      default:
+        return code;
+    }
+  }
+
+  Widget _buildErrorBox(String error, s) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -537,7 +555,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              error,
+              _localizeError(error, s),
               style: const TextStyle(
                   color: AppColors.error, fontSize: 13),
             ),

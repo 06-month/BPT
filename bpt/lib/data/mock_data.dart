@@ -7,8 +7,10 @@ import '../models/workout_record_model.dart';
 // ── Mock User ──────────────────────────────────────────────────────────────
 final mockUser = UserModel(
   id: 'u001',
+  username: 'jinjeong',
   name: 'Jin Jeong',
   email: 'jinjeong619@gmail.com',
+  password: '',
   avatarInitials: 'JJ',
   age: 24,
   weightKg: 70,

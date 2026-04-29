@@ -1,11 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/mock_data.dart';
+import '../../../features/auth/providers/auth_provider.dart';
 import '../../../models/exercise_model.dart';
 import '../../../models/user_model.dart';
 import '../../../models/workout_record_model.dart';
 
-final currentUserProvider = Provider<UserModel>((ref) => mockUser);
+final currentUserProvider = Provider<UserModel>((ref) {
+  return ref.watch(authNotifierProvider).currentUser ?? mockUser;
+});
 
 final weeklyWorkoutGoalProvider = StateProvider<int>((ref) => 5);
 

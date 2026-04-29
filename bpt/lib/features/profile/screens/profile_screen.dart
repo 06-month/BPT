@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
-import '../../../core/constants/route_constants.dart';
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/mock_data.dart';
@@ -17,6 +14,8 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
     final user = ref.watch(profileUserProvider);
+
+    if (user == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     return Scaffold(
       appBar: AppBar(title: Text(s.profile)),
@@ -172,12 +171,18 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    widget.ref.read(profileUserProvider.notifier).update(
-          name: _nameCtrl.text.trim(),
-          age: int.tryParse(_ageCtrl.text),
-          weightKg: double.tryParse(_weightCtrl.text),
-          heightCm: double.tryParse(_heightCtrl.text),
-        );
+    final current = widget.ref.read(profileUserProvider);
+    if (current == null) return;
+    final name = _nameCtrl.text.trim();
+    final initials = name.isNotEmpty ? name[0].toUpperCase() : current.avatarInitials;
+    final updated = current.copyWith(
+      name: name,
+      avatarInitials: initials,
+      age: int.tryParse(_ageCtrl.text),
+      weightKg: double.tryParse(_weightCtrl.text),
+      heightCm: double.tryParse(_heightCtrl.text),
+    );
+    widget.ref.read(authNotifierProvider).updateProfile(updated);
     Navigator.pop(context);
   }
 
@@ -769,10 +774,9 @@ class _LogoutButton extends ConsumerWidget {
                 child: Text(s.cancel),
               ),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(dialogCtx);
-                  ref.read(authNotifierProvider).logout();
-                  context.go(RouteConstants.login);
+                  await ref.read(authNotifierProvider).logout();
                 },
                 child: Text(s.signOut,
                     style: const TextStyle(color: AppColors.error)),
