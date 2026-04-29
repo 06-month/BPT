@@ -39,6 +39,7 @@ class ReportScreen extends ConsumerWidget {
                     chart: _PostureLineChart(
                       scores: (data['postureScores'] as List).cast<double>(),
                       labels: (data['labels'] as List).cast<String>(),
+                      noDataLabel: s.locale == 'ko' ? '아직 데이터가 없어요' : 'No data yet',
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -48,6 +49,7 @@ class ReportScreen extends ConsumerWidget {
                     chart: _RepsBarChart(
                       reps: (data['reps'] as List).cast<double>(),
                       labels: (data['labels'] as List).cast<String>(),
+                      noDataLabel: s.locale == 'ko' ? '아직 데이터가 없어요' : 'No data yet',
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -55,9 +57,9 @@ class ReportScreen extends ConsumerWidget {
                     title: s.activeTimeChart,
                     subtitle: s.activeTimeSubtitle,
                     chart: _WorkoutTimeLineChart(
-                      minutes:
-                          (data['workoutMinutes'] as List).cast<double>(),
+                      minutes: (data['workoutMinutes'] as List).cast<double>(),
                       labels: (data['labels'] as List).cast<String>(),
+                      noDataLabel: s.locale == 'ko' ? '아직 데이터가 없어요' : 'No data yet',
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -327,11 +329,14 @@ class _ChartCard extends StatelessWidget {
 double _niceMax(List<double> values, double base) {
   if (values.isEmpty) return base;
   final max = values.reduce((a, b) => a > b ? a : b);
+  if (max <= 0) return base;
   return ((max * 1.15) / base).ceil() * base;
 }
 
-double _niceInterval(double maxY, int steps) =>
-    ((maxY / steps) / 5).ceil() * 5;
+double _niceInterval(double maxY, int steps) {
+  final result = ((maxY / steps) / 5).ceil() * 5;
+  return result <= 0 ? 5.0 : result.toDouble();
+}
 
 Widget _bottomLabel(
     double v, List<String> labels, TextStyle style, int step) {
@@ -345,9 +350,14 @@ Widget _bottomLabel(
 
 // ── Posture Line Chart ─────────────────────────────────────────────────────
 class _PostureLineChart extends StatelessWidget {
-  const _PostureLineChart({required this.scores, required this.labels});
+  const _PostureLineChart({
+    required this.scores,
+    required this.labels,
+    this.noDataLabel = 'No data yet',
+  });
   final List<double> scores;
   final List<String> labels;
+  final String noDataLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -357,8 +367,25 @@ class _PostureLineChart extends StatelessWidget {
         fontSize: 10);
     final step = labels.length > 8 ? 2 : 1;
 
+    // Filter out zero-score periods so lines don't spike to the bottom
+    final spots = scores
+        .asMap()
+        .entries
+        .where((e) => e.value > 0)
+        .map((e) => FlSpot(e.key.toDouble(), e.value))
+        .toList();
+
+    if (spots.isEmpty || labels.isEmpty) {
+      return Center(
+        child: Text(noDataLabel,
+            style: textStyle.copyWith(fontSize: 13)),
+      );
+    }
+
     return LineChart(LineChartData(
-      minY: 55,
+      minX: 0,
+      maxX: (labels.length - 1).toDouble(),
+      minY: 50,
       maxY: 100,
       gridData: FlGridData(
         show: true,
@@ -393,12 +420,8 @@ class _PostureLineChart extends StatelessWidget {
       ),
       lineBarsData: [
         LineChartBarData(
-          spots: scores
-              .asMap()
-              .entries
-              .map((e) => FlSpot(e.key.toDouble(), e.value))
-              .toList(),
-          isCurved: true,
+          spots: spots,
+          isCurved: spots.length > 1,
           curveSmoothness: 0.35,
           color: AppColors.primary,
           barWidth: 2.5,
@@ -430,9 +453,14 @@ class _PostureLineChart extends StatelessWidget {
 
 // ── Reps Bar Chart ─────────────────────────────────────────────────────────
 class _RepsBarChart extends StatelessWidget {
-  const _RepsBarChart({required this.reps, required this.labels});
+  const _RepsBarChart({
+    required this.reps,
+    required this.labels,
+    this.noDataLabel = 'No data yet',
+  });
   final List<double> reps;
   final List<String> labels;
+  final String noDataLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -442,8 +470,14 @@ class _RepsBarChart extends StatelessWidget {
         fontSize: 10);
     final step = labels.length > 8 ? 2 : 1;
 
+    if (labels.isEmpty) {
+      return Center(
+        child: Text(noDataLabel, style: textStyle.copyWith(fontSize: 13)),
+      );
+    }
+
     final maxY = _niceMax(reps, 50);
-    final yInterval = _niceInterval(maxY, 4).toDouble();
+    final yInterval = _niceInterval(maxY, 4);
 
     return BarChart(BarChartData(
       maxY: maxY,
@@ -500,10 +534,14 @@ class _RepsBarChart extends StatelessWidget {
 
 // ── Workout Time Line Chart ────────────────────────────────────────────────
 class _WorkoutTimeLineChart extends StatelessWidget {
-  const _WorkoutTimeLineChart(
-      {required this.minutes, required this.labels});
+  const _WorkoutTimeLineChart({
+    required this.minutes,
+    required this.labels,
+    this.noDataLabel = 'No data yet',
+  });
   final List<double> minutes;
   final List<String> labels;
+  final String noDataLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -513,10 +551,25 @@ class _WorkoutTimeLineChart extends StatelessWidget {
         fontSize: 10);
     final step = labels.length > 8 ? 2 : 1;
 
-    final maxY = _niceMax(minutes, 50);
-    final yInterval = _niceInterval(maxY, 4).toDouble();
+    final spots = minutes
+        .asMap()
+        .entries
+        .where((e) => e.value > 0)
+        .map((e) => FlSpot(e.key.toDouble(), e.value))
+        .toList();
+
+    if (spots.isEmpty || labels.isEmpty) {
+      return Center(
+        child: Text(noDataLabel, style: textStyle.copyWith(fontSize: 13)),
+      );
+    }
+
+    final maxY = _niceMax(minutes, 10);
+    final yInterval = _niceInterval(maxY, 4);
 
     return LineChart(LineChartData(
+      minX: 0,
+      maxX: (labels.length - 1).toDouble(),
       minY: 0,
       maxY: maxY,
       gridData: FlGridData(
@@ -552,12 +605,8 @@ class _WorkoutTimeLineChart extends StatelessWidget {
       ),
       lineBarsData: [
         LineChartBarData(
-          spots: minutes
-              .asMap()
-              .entries
-              .map((e) => FlSpot(e.key.toDouble(), e.value))
-              .toList(),
-          isCurved: true,
+          spots: spots,
+          isCurved: spots.length > 1,
           curveSmoothness: 0.35,
           color: AppColors.info,
           barWidth: 2.5,

@@ -1,19 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/i18n/locale_provider.dart';
 import '../../../models/workout_record_model.dart';
 import '../../../services/workout_records_service.dart';
 
 enum ReportTab { daily, weekly, monthly }
 
-final reportTabProvider = StateProvider<ReportTab>((ref) => ReportTab.weekly);
+final reportTabProvider = StateProvider<ReportTab>((ref) => ReportTab.daily);
 
 final reportDataProvider = Provider<Map<String, dynamic>>((ref) {
   final tab = ref.watch(reportTabProvider);
   final records = ref.watch(workoutRecordsProvider);
+  final isKo = ref.watch(selectedLanguageProvider) == 'ko';
 
   switch (tab) {
     case ReportTab.daily:
-      return _buildDailyData(records);
+      return _buildDailyData(records, isKo);
     case ReportTab.weekly:
       return _buildWeeklyData(records);
     case ReportTab.monthly:
@@ -25,35 +27,49 @@ final reportDataProvider = Provider<Map<String, dynamic>>((ref) {
 
 DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
-Map<String, dynamic> _buildDailyData(List<WorkoutRecordModel> records) {
-  final now = DateTime.now();
-  // Last 7 days: index 0 = 6 days ago, index 6 = today
-  final days = List.generate(
-      7, (i) => _dateOnly(now.subtract(Duration(days: 6 - i))));
+Map<String, dynamic> _emptyData() => {
+      'postureScores': <double>[],
+      'reps': <double>[],
+      'workoutMinutes': <double>[],
+      'labels': <String>[],
+      'totalWorkouts': 0,
+      'totalReps': 0,
+      'avgScore': 0.0,
+      'totalMinutes': 0,
+      'avgAchievement': 0.0,
+    };
 
+// Chronological by unique workout day, labeled "1일차"/"Day 1"
+Map<String, dynamic> _buildDailyData(List<WorkoutRecordModel> records, bool isKo) {
+  final Map<DateTime, List<WorkoutRecordModel>> byDay = {};
+  for (final r in records) {
+    final day = _dateOnly(r.date);
+    byDay.putIfAbsent(day, () => []).add(r);
+  }
+
+  final sortedDays = byDay.keys.toList()..sort();
+  final recentDays = sortedDays.length > 7
+      ? sortedDays.sublist(sortedDays.length - 7)
+      : sortedDays;
+
+  if (recentDays.isEmpty) return _emptyData();
+
+  final startIdx = sortedDays.length - recentDays.length;
   final scores = <double>[];
   final reps = <double>[];
   final minutes = <double>[];
-  final labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  final labels = <String>[];
 
-  for (final day in days) {
-    final dayRecs =
-        records.where((r) => _dateOnly(r.date) == day).toList();
-    scores.add(dayRecs.isEmpty
-        ? 0
-        : dayRecs.fold(0.0, (s, r) => s + r.postureScore) /
-            dayRecs.length);
-    reps.add(
-        dayRecs.fold(0.0, (s, r) => s + r.totalReps).toDouble());
-    minutes.add(
-        dayRecs.fold(0, (s, r) => s + r.durationSeconds) / 60.0);
+  for (int i = 0; i < recentDays.length; i++) {
+    final dayRecs = byDay[recentDays[i]]!;
+    final n = startIdx + i + 1;
+    labels.add(isKo ? '$n일차' : 'Day $n');
+    scores.add(dayRecs.fold(0.0, (s, r) => s + r.postureScore) / dayRecs.length);
+    reps.add(dayRecs.fold(0.0, (s, r) => s + r.totalReps));
+    minutes.add(dayRecs.fold(0, (s, r) => s + r.durationSeconds) / 60.0);
   }
 
-  final totalWorkouts = records
-      .where((r) => days.contains(_dateOnly(r.date)))
-      .length;
-  final totalReps =
-      reps.fold(0.0, (a, b) => a + b).toInt();
+  final totalReps = reps.fold(0.0, (a, b) => a + b).toInt();
   final totalMins = minutes.fold(0.0, (a, b) => a + b).toInt();
   final validScores = scores.where((s) => s > 0).toList();
   final avgScore = validScores.isEmpty
@@ -65,7 +81,7 @@ Map<String, dynamic> _buildDailyData(List<WorkoutRecordModel> records) {
     'reps': reps,
     'workoutMinutes': minutes,
     'labels': labels,
-    'totalWorkouts': totalWorkouts,
+    'totalWorkouts': records.length,
     'totalReps': totalReps,
     'avgScore': avgScore,
     'totalMinutes': totalMins,
@@ -86,8 +102,8 @@ Map<String, dynamic> _buildWeeklyData(List<WorkoutRecordModel> records) {
   final scores = <double>[];
   final reps = <double>[];
   final minutes = <double>[];
-  final labels =
-      List.generate(8, (i) => 'W${i + 1}');
+  // Actual Monday dates as "M/D" labels so new users see real dates
+  final labels = weekStarts.map((ws) => '${ws.month}/${ws.day}').toList();
 
   for (final weekStart in weekStarts) {
     final weekEnd = weekStart.add(const Duration(days: 7));
