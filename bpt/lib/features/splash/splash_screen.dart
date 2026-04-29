@@ -28,15 +28,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _fadeAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
     _ctrl.forward();
 
-    Future.delayed(const Duration(milliseconds: 2200), () {
-      if (!mounted) return;
-      final autoLogin = ref.read(autoLoginProvider);
-      if (autoLogin) {
-        ref.read(authNotifierProvider).autoLogin();
-      } else {
-        context.go(RouteConstants.login);
-      }
-    });
+    Future.delayed(const Duration(milliseconds: 2200), _navigate);
+  }
+
+  Future<void> _navigate() async {
+    if (!mounted) return;
+    final loggedIn =
+        await ref.read(authNotifierProvider).tryAutoLogin();
+    if (!mounted) return;
+    if (!loggedIn) context.go(RouteConstants.login);
+    // If loggedIn, GoRouter's refreshListenable redirects to home automatically.
   }
 
   @override
