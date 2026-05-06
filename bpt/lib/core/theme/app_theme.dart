@@ -70,7 +70,7 @@ class AppTheme {
         ),
         iconTheme: const IconThemeData(size: 26),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: card,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -149,7 +149,7 @@ class AppTheme {
         labelStyle: GoogleFonts.inter(fontSize: 14, color: textPrimary),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         labelColor: AppColors.primary,
         unselectedLabelColor: textSecondary,
         indicatorColor: AppColors.primary,
