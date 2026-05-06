@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../services/local_storage_service.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -20,13 +19,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _signUpFormKey = GlobalKey<FormState>();
 
   // Login
-  final _loginIdCtrl = TextEditingController();
+  final _loginEmailCtrl = TextEditingController();   // username → email
   final _loginPasswordCtrl = TextEditingController();
   bool _obscureLogin = true;
   bool _autoLogin = false;
 
   // Sign-up
-  final _usernameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();         // username → email
   final _signUpPasswordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
@@ -35,11 +34,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   String? _selectedGender;
   String? _selectedGoal;
-  bool _idChecked = false;
-  bool _idAvailable = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
-  bool _isCheckingId = false;
 
   bool _isSignUp = false;
 
@@ -64,9 +60,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   void dispose() {
     _animCtrl.dispose();
-    _loginIdCtrl.dispose();
+    _loginEmailCtrl.dispose();
     _loginPasswordCtrl.dispose();
-    _usernameCtrl.dispose();
+    _emailCtrl.dispose();
     _signUpPasswordCtrl.dispose();
     _confirmPasswordCtrl.dispose();
     _nameCtrl.dispose();
@@ -81,7 +77,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (!(_signUpFormKey.currentState?.validate() ?? false)) return;
       if (_selectedGoal == null) return;
       await auth.signUp(
-        username: _usernameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),           // username → email
         password: _signUpPasswordCtrl.text.trim(),
         name: _nameCtrl.text.trim(),
         gender: _selectedGender,
@@ -92,27 +88,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     } else {
       if (!(_loginFormKey.currentState?.validate() ?? false)) return;
       await auth.login(
-        _loginIdCtrl.text.trim(),
+        _loginEmailCtrl.text.trim(),             // username → email
         _loginPasswordCtrl.text.trim(),
         rememberMe: _autoLogin,
       );
     }
-  }
-
-  Future<void> _checkDuplicate() async {
-    final username = _usernameCtrl.text.trim();
-    if (username.isEmpty) return;
-    setState(() => _isCheckingId = true);
-
-    final storage = ref.read(localStorageServiceProvider);
-    final existing = storage.loadUser();
-    final taken = existing != null && existing.username == username;
-
-    setState(() {
-      _isCheckingId = false;
-      _idChecked = true;
-      _idAvailable = !taken;
-    });
   }
 
   void _toggleMode() {
@@ -155,8 +135,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     child: Text(
                       s.poweredBy,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.35),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
                       ),
                     ),
                   ),
@@ -178,11 +157,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildField(
-            controller: _loginIdCtrl,
-            label: s.username,
-            icon: Icons.person_outline_rounded,
-            validator: (v) =>
-                v == null || v.isEmpty ? s.idRequired : null,
+            controller: _loginEmailCtrl,
+            label: s.email,                            // 라벨도 email로
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            validator: (v) {
+              if (v == null || v.isEmpty) return s.idRequired;
+              if (!v.contains('@')) return s.invalidEmail; // 이메일 형식 체크
+              return null;
+            },
           ),
           const SizedBox(height: 16),
           _buildField(
@@ -197,11 +180,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     : Icons.visibility_outlined,
                 size: 20,
               ),
-              onPressed: () =>
-                  setState(() => _obscureLogin = !_obscureLogin),
+              onPressed: () => setState(() => _obscureLogin = !_obscureLogin),
             ),
-            validator: (v) =>
-                v == null || v.length < 6 ? s.minSixChars : null,
+            validator: (v) => v == null || v.length < 6 ? s.minSixChars : null,
           ),
           const SizedBox(height: 4),
           Row(
@@ -211,8 +192,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 height: 24,
                 child: Checkbox(
                   value: _autoLogin,
-                  onChanged: (v) =>
-                      setState(() => _autoLogin = v ?? false),
+                  onChanged: (v) => setState(() => _autoLogin = v ?? false),
                   activeColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4)),
@@ -221,8 +201,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: () =>
-                    setState(() => _autoLogin = !_autoLogin),
+                onTap: () => setState(() => _autoLogin = !_autoLogin),
                 child: Text(
                   s.locale == 'ko' ? '자동 로그인' : 'Remember me',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -251,93 +230,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ─ 계정 정보 ────────────────────────────────────────────────────────
           _sectionLabel(s.accountInfo, theme),
           const SizedBox(height: 12),
 
-          // 아이디 + 중복확인
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _usernameCtrl,
-                  onChanged: (_) => setState(() {
-                    _idChecked = false;
-                    _idAvailable = false;
-                  }),
-                  decoration: InputDecoration(
-                    labelText: s.username,
-                    prefixIcon: const Icon(
-                        Icons.person_outline_rounded,
-                        size: 20),
-                    suffixIcon: _idChecked
-                        ? Icon(
-                            _idAvailable
-                                ? Icons.check_circle_rounded
-                                : Icons.cancel_rounded,
-                            color: _idAvailable
-                                ? AppColors.scoreExcellent
-                                : AppColors.error,
-                            size: 20,
-                          )
-                        : null,
-                  ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return s.idRequired;
-                    if (!_idChecked) return s.duplicateCheckRequired;
-                    if (!_idAvailable) return s.duplicateTaken;
-                    return null;
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: _isCheckingId
-                    ? const SizedBox(
-                        width: 80,
-                        height: 52,
-                        child: Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2),
-                          ),
-                        ),
-                      )
-                    : OutlinedButton(
-                        onPressed: _checkDuplicate,
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(80, 52),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          side:
-                              const BorderSide(color: AppColors.primary),
-                        ),
-                        child: Text(
-                          s.checkDuplicate,
-                          style: const TextStyle(
-                              color: AppColors.primary, fontSize: 13),
-                        ),
-                      ),
-              ),
-            ],
+          // 이메일 (중복확인 버튼 제거 — Firebase가 자동 처리)
+          _buildField(
+            controller: _emailCtrl,
+            label: s.email,
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            validator: (v) {
+              if (v == null || v.isEmpty) return s.idRequired;
+              if (!v.contains('@')) return s.invalidEmail;
+              return null;
+            },
           ),
-          if (_idChecked)
-            Padding(
-              padding: const EdgeInsets.only(top: 6, left: 4),
-              child: Text(
-                _idAvailable ? s.duplicateAvailable : s.duplicateTaken,
-                style: TextStyle(
-                  color: _idAvailable
-                      ? AppColors.scoreExcellent
-                      : AppColors.error,
-                  fontSize: 12,
-                ),
-              ),
-            ),
           const SizedBox(height: 12),
 
           // 비밀번호
@@ -356,8 +263,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               onPressed: () =>
                   setState(() => _obscurePassword = !_obscurePassword),
             ),
-            validator: (v) =>
-                v == null || v.length < 6 ? s.minSixChars : null,
+            validator: (v) => v == null || v.length < 6 ? s.minSixChars : null,
           ),
           const SizedBox(height: 12),
 
@@ -379,29 +285,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             ),
             validator: (v) {
               if (v == null || v.isEmpty) return s.minSixChars;
-              if (v != _signUpPasswordCtrl.text) {
-                return s.passwordMismatch;
-              }
+              if (v != _signUpPasswordCtrl.text) return s.passwordMismatch;
               return null;
             },
           ),
           const SizedBox(height: 28),
 
-          // ─ 개인 정보 ────────────────────────────────────────────────────────
+          // 이하 개인정보/신체정보/운동목표 섹션은 기존과 동일
           _sectionLabel(s.personalInfo, theme),
           const SizedBox(height: 12),
-
-          // 이름
           _buildField(
             controller: _nameCtrl,
             label: s.fullName,
             icon: Icons.badge_outlined,
-            validator: (v) =>
-                v == null || v.isEmpty ? s.nameRequired : null,
+            validator: (v) => v == null || v.isEmpty ? s.nameRequired : null,
           ),
           const SizedBox(height: 16),
-
-          // 성별 (선택)
           Text(
             s.gender,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -415,8 +314,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 label: s.male,
                 isSelected: _selectedGender == 'male',
                 onTap: () => setState(() =>
-                    _selectedGender =
-                        _selectedGender == 'male' ? null : 'male'),
+                    _selectedGender = _selectedGender == 'male' ? null : 'male'),
               ),
               const SizedBox(width: 10),
               _GenderChip(
@@ -429,8 +327,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             ],
           ),
           const SizedBox(height: 28),
-
-          // ─ 신체 정보 ────────────────────────────────────────────────────────
           _sectionLabel(s.bodyStats, theme),
           const SizedBox(height: 12),
           Row(
@@ -440,14 +336,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   controller: _heightCtrl,
                   label: s.heightCm,
                   icon: Icons.height_rounded,
-                  keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'[\d.]'))
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))
                   ],
-                  validator: (v) =>
-                      v == null || v.isEmpty ? s.required : null,
+                  validator: (v) => v == null || v.isEmpty ? s.required : null,
                 ),
               ),
               const SizedBox(width: 12),
@@ -456,21 +350,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   controller: _weightCtrl,
                   label: s.weightKg,
                   icon: Icons.monitor_weight_outlined,
-                  keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'[\d.]'))
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))
                   ],
-                  validator: (v) =>
-                      v == null || v.isEmpty ? s.required : null,
+                  validator: (v) => v == null || v.isEmpty ? s.required : null,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 28),
-
-          // ─ 운동 목적 ────────────────────────────────────────────────────────
           _sectionLabel(s.workoutGoal, theme),
           const SizedBox(height: 12),
           _GoalCard(
@@ -505,7 +395,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  // ── Helpers (기존과 동일) ──────────────────────────────────────────────────
   Widget _sectionLabel(String label, ThemeData theme) {
     return Row(
       children: [
@@ -520,8 +410,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         const SizedBox(width: 8),
         Text(
           label,
-          style: theme.textTheme.titleSmall
-              ?.copyWith(fontWeight: FontWeight.w700),
+          style:
+              theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
       ],
     );
@@ -531,11 +421,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final isKo = s.locale == 'ko';
     switch (code) {
       case 'username_or_password_incorrect':
-        return isKo ? '아이디 또는 비밀번호가 올바르지 않아요.' : 'Username or password is incorrect.';
+        return isKo ? '이메일 또는 비밀번호가 올바르지 않아요.' : 'Email or password is incorrect.';
       case 'username_already_exists':
-        return isKo ? '이미 사용 중인 아이디예요.' : 'This username is already taken.';
+        return isKo ? '이미 사용 중인 이메일이에요.' : 'This email is already in use.';
+      case 'password_too_weak':
+        return isKo ? '비밀번호가 너무 짧아요. 6자 이상 입력해주세요.' : 'Password is too weak.';
+      case 'invalid_email':
+        return isKo ? '올바른 이메일 형식이 아니에요.' : 'Invalid email format.';
       default:
-        return code;
+        return isKo ? '오류가 발생했어요. 다시 시도해주세요.' : 'Something went wrong. Please try again.';
     }
   }
 
@@ -545,25 +439,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       decoration: BoxDecoration(
         color: AppColors.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border:
-            Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline,
-              color: AppColors.error, size: 18),
+          const Icon(Icons.error_outline, color: AppColors.error, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               _localizeError(error, s),
-              style: const TextStyle(
-                  color: AppColors.error, fontSize: 13),
+              style: const TextStyle(color: AppColors.error, fontSize: 13),
             ),
           ),
         ],
       ),
     );
   }
+
+  // _buildLogo, _buildHeadline, _buildField, _buildCTA, _buildToggle,
+  // _buildDivider 는 기존 코드 그대로 사용
+  // ... (생략 — 변경 없음)
+
 
   Widget _buildLogo(s) {
     return Row(
