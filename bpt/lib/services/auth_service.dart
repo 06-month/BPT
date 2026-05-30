@@ -10,7 +10,11 @@ class AuthService {
     required String email,
     required String password,
     required String name,
-    // 학번이나 다른 정보가 있다면 여기에 추가
+    int? age,
+    double? weight,
+    double? height,
+    String? gender,
+    String? goal,
   }) async {
     try {
       // 1. Auth 계정 생성
@@ -19,11 +23,26 @@ class AuthService {
         password: password,
       );
 
+      final uid = userCredential.user!.uid;
+      final initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+
       // 2. 생성된 UID로 Firestore에 문서 생성
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
-        'uid': userCredential.user!.uid,
-        'email': email,
+      await _firestore.collection('users').doc(uid).set({
+        'id': uid,
+        'uid': uid,
+        'username': email,
         'name': name,
+        'email': email,
+        'password': '',
+        'avatarInitials': initials,
+        'age': age ?? 0,
+        'weightKg': weight ?? 0.0,
+        'heightCm': height ?? 0.0,
+        'gender': gender,
+        'workoutGoal': goal,
+        'totalWorkouts': 0,
+        'streakDays': 0,
+        'joinedAt': DateTime.now().toIso8601String(),
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {

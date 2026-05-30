@@ -1,14 +1,17 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/user_model.dart';
+import '../../../services/auth_service.dart';
 
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
 
 // ── Auth ───────────────────────────────────────────────────────────────────
 class AuthNotifier extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AuthService _authService = AuthService();
 
   UserModel? _currentUser;
   bool _isLoading = false;
@@ -84,11 +87,19 @@ class AuthNotifier extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final credential = await _auth.createUserWithEmailAndPassword(
+      // AuthService의 signUpAndSaveData를 호출하여 Auth 계정 및 Firestore 유저 데이터 동시 저장
+      await _authService.signUpAndSaveData(
         email: email.trim(),
         password: password,
+        name: name,
+        age: 0, // UI에 나이 입력 폼이 없으므로 기본값 0 전달
+        weight: weightKg,
+        height: heightCm,
+        gender: gender,
+        goal: workoutGoal,
       );
-      final user = credential.user!;
+
+      final user = _auth.currentUser!;
 
       // Firebase Auth에 displayName 저장
       await user.updateDisplayName(name);
@@ -110,6 +121,8 @@ class AuthNotifier extends ChangeNotifier {
       _error = null;
     } on FirebaseAuthException catch (e) {
       _error = _mapFirebaseError(e.code);
+    } catch (e) {
+      _error = 'unknown_error';
     }
 
     _isLoading = false;
