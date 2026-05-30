@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../features/auth/providers/auth_provider.dart';
@@ -169,7 +171,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final current = widget.ref.read(profileUserProvider);
     if (current == null) return;
@@ -182,8 +184,23 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       weightKg: double.tryParse(_weightCtrl.text),
       heightCm: double.tryParse(_heightCtrl.text),
     );
-    widget.ref.read(authNotifierProvider).updateProfile(updated);
-    Navigator.pop(context);
+    
+    // Firestore 즉시 반영
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'name': name,
+        'avatarInitials': initials,
+        'age': int.tryParse(_ageCtrl.text) ?? 0,
+        'weightKg': double.tryParse(_weightCtrl.text) ?? 0.0,
+        'heightCm': double.tryParse(_heightCtrl.text) ?? 0.0,
+      });
+    }
+
+    await widget.ref.read(authNotifierProvider).updateProfile(updated);
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override

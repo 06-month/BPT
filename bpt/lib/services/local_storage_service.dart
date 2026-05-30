@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/user_model.dart';
 import '../models/workout_record_model.dart';
@@ -73,6 +75,20 @@ class LocalStorageService {
     final existing = loadRecords();
     existing.insert(0, record); // newest first
     await saveRecords(existing);
+
+    // Firestore 동기화 백업 추가
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('workouts').add({
+          ...record.toJson(),
+          'uid': user.uid,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (_) {
+      // 로컬 저장은 완료되었으므로 네트워크 불안정 등으로 인한 백업 실패 시 오류가 UI에 영향을 주지 않게 함
+    }
   }
 
   // ── Session ───────────────────────────────────────────────────────────────
