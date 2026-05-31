@@ -22,15 +22,38 @@ class AuthNotifier extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<UserModel> _loadUserModel(User user) async {
+  Future<UserModel?> _loadFromFirestore(User user) async {
+    // 로그인 직후 Firestore 보안 규칙이 토큰을 인식하지 못하는 타이밍 이슈 방지
+    await user.getIdToken(true);
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
         .get();
-    if (doc.exists && doc.data() != null) {
-      final data = doc.data()!;
-      return UserModel.fromJson({...data, 'id': user.uid});
-    }
+    if (!doc.exists || doc.data() == null) return null;
+    final data = doc.data()!;
+    return UserModel(
+      id: user.uid,
+      username: data['username'] as String? ?? user.email ?? '',
+      name: data['name'] as String? ?? user.displayName ?? '',
+      email: data['email'] as String? ?? user.email ?? '',
+      password: '',
+      avatarInitials: data['avatarInitials'] as String? ??
+          (user.displayName?.isNotEmpty == true
+              ? user.displayName![0].toUpperCase()
+              : 'U'),
+      age: (data['age'] as num?)?.toInt() ?? 0,
+      weightKg: (data['weightKg'] as num?)?.toDouble() ?? 0.0,
+      heightCm: (data['heightCm'] as num?)?.toDouble() ?? 0.0,
+      gender: data['gender'] as String?,
+      workoutGoal: data['workoutGoal'] as String?,
+      joinedAt: data['joinedAt'] != null
+          ? (DateTime.tryParse(data['joinedAt'] as String? ?? '') ??
+              DateTime.now())
+          : DateTime.now(),
+    );
+  }
+
+  UserModel _fallbackUser(User user) {
     final initials = (user.displayName?.isNotEmpty == true)
         ? user.displayName![0].toUpperCase()
         : 'U';
@@ -49,22 +72,7 @@ class AuthNotifier extends ChangeNotifier {
   Future<bool> tryAutoLogin() async {
     final user = _auth.currentUser;
     if (user == null) return false;
-    try {
-      _currentUser = await _loadUserModel(user);
-    } catch (_) {
-      final initials = (user.displayName?.isNotEmpty == true)
-          ? user.displayName![0].toUpperCase()
-          : 'U';
-      _currentUser = UserModel(
-        id: user.uid,
-        username: user.email ?? '',
-        name: user.displayName ?? '',
-        email: user.email ?? '',
-        password: '',
-        avatarInitials: initials,
-        joinedAt: DateTime.now(),
-      );
-    }
+    _currentUser = await _loadFromFirestore(user) ?? _fallbackUser(user);
     notifyListeners();
     return true;
   }
@@ -80,23 +88,8 @@ class AuthNotifier extends ChangeNotifier {
         email: email.trim(),
         password: password,
       );
-      try {
-        _currentUser = await _loadUserModel(credential.user!);
-      } catch (_) {
-        final u = credential.user!;
-        final initials = (u.displayName?.isNotEmpty == true)
-            ? u.displayName![0].toUpperCase()
-            : 'U';
-        _currentUser = UserModel(
-          id: u.uid,
-          username: u.email ?? '',
-          name: u.displayName ?? '',
-          email: u.email ?? '',
-          password: '',
-          avatarInitials: initials,
-          joinedAt: DateTime.now(),
-        );
-      }
+      final u = credential.user!;
+      _currentUser = await _loadFromFirestore(u) ?? _fallbackUser(u);
       _error = null;
     } on FirebaseAuthException catch (e) {
       _error = _mapFirebaseError(e.code);
@@ -134,8 +127,21 @@ class AuthNotifier extends ChangeNotifier {
       final user = _auth.currentUser!;
       await user.updateDisplayName(name);
 
-      // Firestore에서 실제 저장된 데이터를 읽어 단일 소스로 통일
-      _currentUser = await _loadUserModel(user);
+      final initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+      _currentUser = UserModel(
+        id: user.uid,
+        username: email.trim(),
+        name: name,
+        email: email.trim(),
+        password: '',
+        avatarInitials: initials,
+        age: 0,
+        heightCm: heightCm ?? 0,
+        weightKg: weightKg ?? 0,
+        gender: gender,
+        workoutGoal: workoutGoal,
+        joinedAt: DateTime.now(),
+      );
       _error = null;
     } on FirebaseAuthException catch (e) {
       _error = _mapFirebaseError(e.code);
