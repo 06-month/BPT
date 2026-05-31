@@ -98,11 +98,20 @@ class _UserHeader extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _HeaderStat(value: '${user.age}', label: s.age),
+              _HeaderStat(
+                value: user.age == 0 ? '-' : '${user.age}',
+                label: s.age,
+              ),
               _HDivider(),
-              _HeaderStat(value: '${user.weightKg}kg', label: s.weight),
+              _HeaderStat(
+                value: user.weightKg == 0 ? '-' : '${user.weightKg.round()}kg',
+                label: s.weight,
+              ),
               _HDivider(),
-              _HeaderStat(value: '${user.heightCm}cm', label: s.height),
+              _HeaderStat(
+                value: user.heightCm == 0 ? '-' : '${user.heightCm.round()}cm',
+                label: s.height,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -129,24 +138,22 @@ class _UserHeader extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => _EditProfileSheet(user: user, strings: s, ref: ref),
+      builder: (_) => _EditProfileSheet(user: user, strings: s),
     );
   }
 }
 
 // ── Edit Profile Bottom Sheet ──────────────────────────────────────────────
-class _EditProfileSheet extends StatefulWidget {
-  const _EditProfileSheet(
-      {required this.user, required this.strings, required this.ref});
+class _EditProfileSheet extends ConsumerStatefulWidget {
+  const _EditProfileSheet({required this.user, required this.strings});
   final dynamic user;
   final dynamic strings;
-  final WidgetRef ref;
 
   @override
-  State<_EditProfileSheet> createState() => _EditProfileSheetState();
+  ConsumerState<_EditProfileSheet> createState() => _EditProfileSheetState();
 }
 
-class _EditProfileSheetState extends State<_EditProfileSheet> {
+class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _ageCtrl;
   late final TextEditingController _weightCtrl;
@@ -173,34 +180,42 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    final current = widget.ref.read(profileUserProvider);
+    final current = ref.read(profileUserProvider);
     if (current == null) return;
     final name = _nameCtrl.text.trim();
     final initials = name.isNotEmpty ? name[0].toUpperCase() : current.avatarInitials;
+    final newAge = int.tryParse(_ageCtrl.text) ?? 0;
+    final newWeight = double.tryParse(_weightCtrl.text) ?? 0.0;
+    final newHeight = double.tryParse(_heightCtrl.text) ?? 0.0;
+
     final updated = current.copyWith(
       name: name,
       avatarInitials: initials,
-      age: int.tryParse(_ageCtrl.text),
-      weightKg: double.tryParse(_weightCtrl.text),
-      heightCm: double.tryParse(_heightCtrl.text),
+      age: newAge,
+      weightKg: newWeight,
+      heightCm: newHeight,
     );
-    
-    // Firestore 즉시 반영
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'name': name,
-        'avatarInitials': initials,
-        'age': int.tryParse(_ageCtrl.text) ?? 0,
-        'weightKg': double.tryParse(_weightCtrl.text) ?? 0.0,
-        'heightCm': double.tryParse(_heightCtrl.text) ?? 0.0,
-      });
+
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser != null) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .update({
+          'name': name,
+          'avatarInitials': initials,
+          'age': newAge,
+          'weightKg': newWeight,
+          'heightCm': newHeight,
+        });
+      } catch (_) {
+        // 네트워크/권한 오류여도 인메모리 상태는 항상 반영
+      }
     }
 
-    await widget.ref.read(authNotifierProvider).updateProfile(updated);
-    if (mounted) {
-      Navigator.pop(context);
-    }
+    await ref.read(authNotifierProvider).updateProfile(updated);
+    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -255,8 +270,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     validator: (v) {
-                      final n = int.tryParse(v ?? '');
-                      if (n == null || n < 1 || n > 120) return '1–120';
+                      if (v == null || v.isEmpty) return null;
+                      final n = int.tryParse(v);
+                      if (n == null || n < 0 || n > 120) return '0–120';
                       return null;
                     },
                   ),

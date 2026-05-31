@@ -22,7 +22,9 @@ class LocalStorageService {
 
   static const _keyUser = 'bpt_user';
   static const _keyAutoLogin = 'bpt_auto_login';
-  static const _keyRecords = 'bpt_workout_records';
+
+  String _recordsKey(String? uid) =>
+      uid != null ? 'bpt_workout_records_$uid' : 'bpt_workout_records';
 
   LocalStorageService(this._prefs);
 
@@ -53,13 +55,14 @@ class LocalStorageService {
   bool loadAutoLogin() => _prefs.getBool(_keyAutoLogin) ?? false;
 
   // ── Workout Records ───────────────────────────────────────────────────────
-  Future<void> saveRecords(List<WorkoutRecordModel> records) async {
+  Future<void> saveRecords(List<WorkoutRecordModel> records,
+      {String? uid}) async {
     final encoded = jsonEncode(records.map((r) => r.toJson()).toList());
-    await _prefs.setString(_keyRecords, encoded);
+    await _prefs.setString(_recordsKey(uid), encoded);
   }
 
-  List<WorkoutRecordModel> loadRecords() {
-    final raw = _prefs.getString(_keyRecords);
+  List<WorkoutRecordModel> loadRecords({String? uid}) {
+    final raw = _prefs.getString(_recordsKey(uid));
     if (raw == null) return [];
     try {
       final list = jsonDecode(raw) as List;
@@ -71,10 +74,10 @@ class LocalStorageService {
     }
   }
 
-  Future<void> addRecord(WorkoutRecordModel record) async {
-    final existing = loadRecords();
+  Future<void> addRecord(WorkoutRecordModel record, {String? uid}) async {
+    final existing = loadRecords(uid: uid);
     existing.insert(0, record); // newest first
-    await saveRecords(existing);
+    await saveRecords(existing, uid: uid);
 
     // Firestore 동기화 백업 추가
     try {
