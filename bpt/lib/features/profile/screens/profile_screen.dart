@@ -99,7 +99,7 @@ class _UserHeader extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _HeaderStat(
-                value: user.age == 0 ? '-' : '${user.age}',
+                value: user.age == 0 ? '-' : '${user.age}세',
                 label: s.age,
               ),
               _HDivider(),
