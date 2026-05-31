@@ -367,7 +367,12 @@ class _PostureLineChart extends StatelessWidget {
         fontSize: 10);
     final step = labels.length > 8 ? 2 : 1;
 
-    // Filter out zero-score periods so lines don't spike to the bottom
+    if (labels.isEmpty) {
+      return Center(
+        child: Text(noDataLabel, style: textStyle.copyWith(fontSize: 13)));
+    }
+
+    // 0점은 운동 없는 날이므로 선 연결에서 제외 (NaN 처리)
     final spots = scores
         .asMap()
         .entries
@@ -375,12 +380,7 @@ class _PostureLineChart extends StatelessWidget {
         .map((e) => FlSpot(e.key.toDouble(), e.value))
         .toList();
 
-    if (spots.isEmpty || labels.isEmpty) {
-      return Center(
-        child: Text(noDataLabel,
-            style: textStyle.copyWith(fontSize: 13)),
-      );
-    }
+    final hasData = spots.isNotEmpty;
 
     return LineChart(LineChartData(
       minX: 0,
@@ -420,13 +420,13 @@ class _PostureLineChart extends StatelessWidget {
       ),
       lineBarsData: [
         LineChartBarData(
-          spots: spots,
+          spots: hasData ? spots : const [FlSpot(0, 50)],
           isCurved: spots.length > 1,
           curveSmoothness: 0.35,
-          color: AppColors.primary,
+          color: hasData ? AppColors.primary : Colors.transparent,
           barWidth: 2.5,
           dotData: FlDotData(
-            show: true,
+            show: hasData,
             getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
               radius: 3,
               color: AppColors.primary,
@@ -435,7 +435,7 @@ class _PostureLineChart extends StatelessWidget {
             ),
           ),
           belowBarData: BarAreaData(
-            show: true,
+            show: hasData,
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -447,6 +447,8 @@ class _PostureLineChart extends StatelessWidget {
           ),
         ),
       ],
+      // 데이터 없을 때 안내 문구
+      extraLinesData: hasData ? null : const ExtraLinesData(extraLinesOnTop: false),
     ));
   }
 }
@@ -476,7 +478,8 @@ class _RepsBarChart extends StatelessWidget {
       );
     }
 
-    final maxY = _niceMax(reps, 50);
+    final hasData = reps.any((v) => v > 0);
+    final maxY = hasData ? _niceMax(reps, 50) : 50.0;
     final yInterval = _niceInterval(maxY, 4);
 
     return BarChart(BarChartData(
@@ -551,6 +554,12 @@ class _WorkoutTimeLineChart extends StatelessWidget {
         fontSize: 10);
     final step = labels.length > 8 ? 2 : 1;
 
+    if (labels.isEmpty) {
+      return Center(
+        child: Text(noDataLabel, style: textStyle.copyWith(fontSize: 13)),
+      );
+    }
+
     final spots = minutes
         .asMap()
         .entries
@@ -558,13 +567,8 @@ class _WorkoutTimeLineChart extends StatelessWidget {
         .map((e) => FlSpot(e.key.toDouble(), e.value))
         .toList();
 
-    if (spots.isEmpty || labels.isEmpty) {
-      return Center(
-        child: Text(noDataLabel, style: textStyle.copyWith(fontSize: 13)),
-      );
-    }
-
-    final maxY = _niceMax(minutes, 10);
+    final hasData = spots.isNotEmpty;
+    final maxY = hasData ? _niceMax(minutes, 10) : 10.0;
     final yInterval = _niceInterval(maxY, 4);
 
     return LineChart(LineChartData(
@@ -605,13 +609,13 @@ class _WorkoutTimeLineChart extends StatelessWidget {
       ),
       lineBarsData: [
         LineChartBarData(
-          spots: spots,
+          spots: hasData ? spots : const [FlSpot(0, 0)],
           isCurved: spots.length > 1,
           curveSmoothness: 0.35,
-          color: AppColors.info,
+          color: hasData ? AppColors.info : Colors.transparent,
           barWidth: 2.5,
           dotData: FlDotData(
-            show: true,
+            show: hasData,
             getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
               radius: 3,
               color: AppColors.info,
@@ -620,7 +624,7 @@ class _WorkoutTimeLineChart extends StatelessWidget {
             ),
           ),
           belowBarData: BarAreaData(
-            show: true,
+            show: hasData,
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
