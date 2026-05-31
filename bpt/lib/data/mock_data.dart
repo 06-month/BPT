@@ -12,7 +12,7 @@ final mockUser = UserModel(
   email: 'jinjeong619@gmail.com',
   password: '',
   avatarInitials: 'JJ',
-  age: 24,
+  birthDate: DateTime(2001, 3, 15),
   weightKg: 70,
   heightCm: 175,
   totalWorkouts: 48,

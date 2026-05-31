@@ -32,6 +32,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _heightCtrl = TextEditingController();
   final _weightCtrl = TextEditingController();
 
+  DateTime? _selectedBirthDate;
   String? _selectedGender;
   String? _selectedGoal;
   bool _obscurePassword = true;
@@ -77,9 +78,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (!(_signUpFormKey.currentState?.validate() ?? false)) return;
       if (_selectedGoal == null) return;
       await auth.signUp(
-        email: _emailCtrl.text.trim(),           // username → email
+        email: _emailCtrl.text.trim(),
         password: _signUpPasswordCtrl.text.trim(),
         name: _nameCtrl.text.trim(),
+        birthDate: _selectedBirthDate,
         gender: _selectedGender,
         heightCm: double.tryParse(_heightCtrl.text),
         weightKg: double.tryParse(_weightCtrl.text),
@@ -299,6 +301,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             label: s.fullName,
             icon: Icons.badge_outlined,
             validator: (v) => v == null || v.isEmpty ? s.nameRequired : null,
+          ),
+          const SizedBox(height: 12),
+          _DatePickerField(
+            label: s.birthDate,
+            selected: _selectedBirthDate,
+            isKo: s.locale == 'ko',
+            onPicked: (date) => setState(() => _selectedBirthDate = date),
           ),
           const SizedBox(height: 16),
           Text(
@@ -705,6 +714,75 @@ class _GoalCard extends StatelessWidget {
             const Spacer(),
             if (isSelected)
               Icon(Icons.check_circle_rounded, color: color, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Date Picker Field ──────────────────────────────────────────────────────
+class _DatePickerField extends StatelessWidget {
+  const _DatePickerField({
+    required this.label,
+    required this.selected,
+    required this.isKo,
+    required this.onPicked,
+  });
+  final String label;
+  final DateTime? selected;
+  final bool isKo;
+  final ValueChanged<DateTime> onPicked;
+
+  String _format(DateTime d) {
+    if (isKo) return '${d.year}년 ${d.month}월 ${d.day}일';
+    final months = ['Jan','Feb','Mar','Apr','May','Jun',
+                    'Jul','Aug','Sep','Oct','Nov','Dec'];
+    return '${months[d.month - 1]} ${d.day}, ${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: () async {
+        final now = DateTime.now();
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: selected ?? DateTime(now.year - 20),
+          firstDate: DateTime(1900),
+          lastDate: now,
+          locale: isKo ? const Locale('ko') : const Locale('en'),
+        );
+        if (picked != null) onPicked(picked);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1A1F2E) : const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.cake_outlined,
+                size: 20,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                selected != null ? _format(selected!) : label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: selected != null
+                      ? theme.colorScheme.onSurface
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                ),
+              ),
+            ),
+            Icon(Icons.calendar_today_outlined,
+                size: 16,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
           ],
         ),
       ),

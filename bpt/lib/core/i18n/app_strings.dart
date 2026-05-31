@@ -156,6 +156,8 @@ class AppStrings {
   final String editProfile;
   final String save;
   final String name;
+  final String birthDate;
+  final String selectBirthDate;
 
   const AppStrings({
     required this.locale,
@@ -294,6 +296,8 @@ class AppStrings {
     required this.editProfile,
     required this.save,
     required this.name,
+    required this.birthDate,
+    required this.selectBirthDate,
   });
 
   // ── English ───────────────────────────────────────────────────────────────
@@ -434,6 +438,8 @@ class AppStrings {
     editProfile: 'Edit Profile',
     save: 'Save',
     name: 'Name',
+    birthDate: 'Date of Birth',
+    selectBirthDate: 'Select date of birth',
   );
 
   // ── Korean ────────────────────────────────────────────────────────────────
@@ -574,5 +580,7 @@ class AppStrings {
     editProfile: '프로필 편집',
     save: '저장',
     name: '이름',
+    birthDate: '생년월일',
+    selectBirthDate: '생년월일을 선택하세요',
   );
 }

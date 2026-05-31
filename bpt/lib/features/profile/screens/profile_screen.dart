@@ -155,24 +155,23 @@ class _EditProfileSheet extends ConsumerStatefulWidget {
 
 class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
   late final TextEditingController _nameCtrl;
-  late final TextEditingController _ageCtrl;
   late final TextEditingController _weightCtrl;
   late final TextEditingController _heightCtrl;
+  DateTime? _selectedBirthDate;
   final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.user.name as String);
-    _ageCtrl = TextEditingController(text: '${widget.user.age}');
     _weightCtrl = TextEditingController(text: '${widget.user.weightKg}');
     _heightCtrl = TextEditingController(text: '${widget.user.heightCm}');
+    _selectedBirthDate = widget.user.birthDate as DateTime?;
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _ageCtrl.dispose();
     _weightCtrl.dispose();
     _heightCtrl.dispose();
     super.dispose();
@@ -184,14 +183,14 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
     if (current == null) return;
     final name = _nameCtrl.text.trim();
     final initials = name.isNotEmpty ? name[0].toUpperCase() : current.avatarInitials;
-    final newAge = int.tryParse(_ageCtrl.text) ?? 0;
     final newWeight = double.tryParse(_weightCtrl.text) ?? 0.0;
     final newHeight = double.tryParse(_heightCtrl.text) ?? 0.0;
 
     final updated = current.copyWith(
       name: name,
       avatarInitials: initials,
-      age: newAge,
+      birthDate: _selectedBirthDate,
+      clearBirthDate: _selectedBirthDate == null,
       weightKg: newWeight,
       heightCm: newHeight,
     );
@@ -199,18 +198,19 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser != null) {
       try {
+        // set(merge:true) — 문서 없으면 생성, 있으면 해당 필드만 갱신
         await FirebaseFirestore.instance
             .collection('users')
             .doc(firebaseUser.uid)
-            .update({
+            .set({
           'name': name,
           'avatarInitials': initials,
-          'age': newAge,
+          'birthDate': _selectedBirthDate?.toIso8601String(),
           'weightKg': newWeight,
           'heightCm': newHeight,
-        });
+        }, SetOptions(merge: true));
       } catch (_) {
-        // 네트워크/권한 오류여도 인메모리 상태는 항상 반영
+        // 네트워크/권한 오류여도 인메모리+캐시 상태는 항상 반영
       }
     }
 
@@ -259,41 +259,26 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
                   (v == null || v.trim().isEmpty) ? s.nameRequired : null,
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _Field(
-                    controller: _ageCtrl,
-                    label: s.age,
-                    icon: Icons.cake_outlined,
-                    isDark: isDark,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return null;
-                      final n = int.tryParse(v);
-                      if (n == null || n < 0 || n > 120) return '0–120';
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _Field(
-                    controller: _weightCtrl,
-                    label: '${s.weight} (kg)',
-                    icon: Icons.monitor_weight_outlined,
-                    isDark: isDark,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) {
-                      final n = double.tryParse(v ?? '');
-                      if (n == null || n < 20 || n > 300) return '20–300';
-                      return null;
-                    },
-                  ),
-                ),
-              ],
+            _BirthDatePicker(
+              label: s.birthDate,
+              selected: _selectedBirthDate,
+              isKo: s.locale == 'ko',
+              isDark: isDark,
+              onPicked: (d) => setState(() => _selectedBirthDate = d),
+            ),
+            const SizedBox(height: 12),
+            _Field(
+              controller: _weightCtrl,
+              label: '${s.weight} (kg)',
+              icon: Icons.monitor_weight_outlined,
+              isDark: isDark,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              validator: (v) {
+                final n = double.tryParse(v ?? '');
+                if (n == null || n < 20 || n > 300) return '20–300';
+                return null;
+              },
             ),
             const SizedBox(height: 12),
             _Field(
@@ -840,6 +825,75 @@ class _LogoutButton extends ConsumerWidget {
         minimumSize: const Size(double.infinity, 52),
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
+  }
+}
+
+// ── Birth Date Picker ──────────────────────────────────────────────────────
+class _BirthDatePicker extends StatelessWidget {
+  const _BirthDatePicker({
+    required this.label,
+    required this.selected,
+    required this.isKo,
+    required this.isDark,
+    required this.onPicked,
+  });
+  final String label;
+  final DateTime? selected;
+  final bool isKo;
+  final bool isDark;
+  final ValueChanged<DateTime> onPicked;
+
+  String _format(DateTime d) {
+    if (isKo) return '${d.year}년 ${d.month}월 ${d.day}일';
+    final m = ['Jan','Feb','Mar','Apr','May','Jun',
+                'Jul','Aug','Sep','Oct','Nov','Dec'];
+    return '${m[d.month - 1]} ${d.day}, ${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: () async {
+        final now = DateTime.now();
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: selected ?? DateTime(now.year - 20),
+          firstDate: DateTime(1900),
+          lastDate: now,
+          locale: isKo ? const Locale('ko') : const Locale('en'),
+        );
+        if (picked != null) onPicked(picked);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkBackground : AppColors.lightInputFill,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.cake_outlined,
+                size: 20,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                selected != null ? _format(selected!) : label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: selected != null
+                      ? theme.colorScheme.onSurface
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                ),
+              ),
+            ),
+            Icon(Icons.calendar_today_outlined,
+                size: 16,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+          ],
+        ),
       ),
     );
   }

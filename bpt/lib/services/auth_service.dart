@@ -10,7 +10,7 @@ class AuthService {
     required String email,
     required String password,
     required String name,
-    int? age,
+    DateTime? birthDate,
     double? weight,
     double? height,
     String? gender,
@@ -26,7 +26,7 @@ class AuthService {
       final uid = userCredential.user!.uid;
       final initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
 
-      // 2. 생성된 UID로 Firestore에 문서 생성
+      // 2. 생성된 UID로 Firestore에 문서 생성 (merge: true로 중복 가입 시 안전 처리)
       await _firestore.collection('users').doc(uid).set({
         'id': uid,
         'uid': uid,
@@ -35,7 +35,7 @@ class AuthService {
         'email': email,
         'password': '',
         'avatarInitials': initials,
-        'age': age ?? 0,
+        'birthDate': birthDate?.toIso8601String(),
         'weightKg': weight ?? 0.0,
         'heightCm': height ?? 0.0,
         'gender': gender,
@@ -44,7 +44,7 @@ class AuthService {
         'streakDays': 0,
         'joinedAt': DateTime.now().toIso8601String(),
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
     } catch (e) {
       rethrow; // 에러를 UI 쪽으로 던져서 알림을 띄울 수 있게 함
     }

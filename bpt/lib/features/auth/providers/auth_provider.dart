@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../models/user_model.dart';
 import '../../../services/auth_service.dart';
@@ -22,35 +23,59 @@ class AuthNotifier extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  // ── 로컬 캐시 (SharedPreferences, UID별 격리) ────────────────────────────
+  static String _cacheKey(String uid) => 'bpt_user_cache_$uid';
+
+  Future<void> _cacheUser(UserModel user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_cacheKey(user.id), user.toJsonString());
+  }
+
+  Future<UserModel?> _loadCachedUser(String uid) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_cacheKey(uid));
+      if (raw == null) return null;
+      return UserModel.fromJsonString(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Firestore 조회 ────────────────────────────────────────────────────────
   Future<UserModel?> _loadFromFirestore(User user) async {
-    // 로그인 직후 Firestore 보안 규칙이 토큰을 인식하지 못하는 타이밍 이슈 방지
-    await user.getIdToken(true);
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-    if (!doc.exists || doc.data() == null) return null;
-    final data = doc.data()!;
-    return UserModel(
-      id: user.uid,
-      username: data['username'] as String? ?? user.email ?? '',
-      name: data['name'] as String? ?? user.displayName ?? '',
-      email: data['email'] as String? ?? user.email ?? '',
-      password: '',
-      avatarInitials: data['avatarInitials'] as String? ??
-          (user.displayName?.isNotEmpty == true
-              ? user.displayName![0].toUpperCase()
-              : 'U'),
-      age: (data['age'] as num?)?.toInt() ?? 0,
-      weightKg: (data['weightKg'] as num?)?.toDouble() ?? 0.0,
-      heightCm: (data['heightCm'] as num?)?.toDouble() ?? 0.0,
-      gender: data['gender'] as String?,
-      workoutGoal: data['workoutGoal'] as String?,
-      joinedAt: data['joinedAt'] != null
-          ? (DateTime.tryParse(data['joinedAt'] as String? ?? '') ??
-              DateTime.now())
-          : DateTime.now(),
-    );
+    try {
+      await user.getIdToken(true);
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      if (!doc.exists || doc.data() == null) return null;
+      final data = doc.data()!;
+      return UserModel(
+        id: user.uid,
+        username: data['username'] as String? ?? user.email ?? '',
+        name: data['name'] as String? ?? user.displayName ?? '',
+        email: data['email'] as String? ?? user.email ?? '',
+        password: '',
+        avatarInitials: data['avatarInitials'] as String? ??
+            (user.displayName?.isNotEmpty == true
+                ? user.displayName![0].toUpperCase()
+                : 'U'),
+        birthDate: data['birthDate'] != null
+            ? DateTime.tryParse(data['birthDate'].toString())
+            : null,
+        weightKg: (data['weightKg'] as num?)?.toDouble() ?? 0.0,
+        heightCm: (data['heightCm'] as num?)?.toDouble() ?? 0.0,
+        gender: data['gender'] as String?,
+        workoutGoal: data['workoutGoal'] as String?,
+        joinedAt: data['joinedAt'] != null
+            ? (DateTime.tryParse(data['joinedAt'].toString()) ?? DateTime.now())
+            : DateTime.now(),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   UserModel _fallbackUser(User user) {
@@ -72,7 +97,13 @@ class AuthNotifier extends ChangeNotifier {
   Future<bool> tryAutoLogin() async {
     final user = _auth.currentUser;
     if (user == null) return false;
-    _currentUser = await _loadFromFirestore(user) ?? _fallbackUser(user);
+    final fromFirestore = await _loadFromFirestore(user);
+    if (fromFirestore != null) {
+      _currentUser = fromFirestore;
+      await _cacheUser(fromFirestore); // Firestore 최신값으로 캐시 갱신
+    } else {
+      _currentUser = await _loadCachedUser(user.uid) ?? _fallbackUser(user);
+    }
     notifyListeners();
     return true;
   }
@@ -89,10 +120,18 @@ class AuthNotifier extends ChangeNotifier {
         password: password,
       );
       final u = credential.user!;
-      _currentUser = await _loadFromFirestore(u) ?? _fallbackUser(u);
+      final fromFirestore = await _loadFromFirestore(u);
+      if (fromFirestore != null) {
+        _currentUser = fromFirestore;
+        await _cacheUser(fromFirestore); // Firestore 최신값으로 캐시 갱신
+      } else {
+        _currentUser = await _loadCachedUser(u.uid) ?? _fallbackUser(u);
+      }
       _error = null;
     } on FirebaseAuthException catch (e) {
       _error = _mapFirebaseError(e.code);
+    } catch (_) {
+      _error = 'unknown_error';
     }
 
     _isLoading = false;
@@ -103,6 +142,7 @@ class AuthNotifier extends ChangeNotifier {
     required String email,
     required String password,
     required String name,
+    DateTime? birthDate,
     String? gender,
     double? heightCm,
     double? weightKg,
@@ -117,7 +157,7 @@ class AuthNotifier extends ChangeNotifier {
         email: email.trim(),
         password: password,
         name: name,
-        age: 0,
+        birthDate: birthDate,
         weight: weightKg,
         height: heightCm,
         gender: gender,
@@ -135,13 +175,15 @@ class AuthNotifier extends ChangeNotifier {
         email: email.trim(),
         password: '',
         avatarInitials: initials,
-        age: 0,
+        birthDate: birthDate,
         heightCm: heightCm ?? 0,
         weightKg: weightKg ?? 0,
         gender: gender,
         workoutGoal: workoutGoal,
         joinedAt: DateTime.now(),
       );
+      // 로컬 캐시에 저장 — 로그아웃 후 재로그인 시 Firestore 없이도 복원 가능
+      await _cacheUser(_currentUser!);
       _error = null;
     } on FirebaseAuthException catch (e) {
       _error = _mapFirebaseError(e.code);
@@ -156,6 +198,7 @@ class AuthNotifier extends ChangeNotifier {
   Future<void> updateProfile(UserModel updated) async {
     await _auth.currentUser?.updateDisplayName(updated.name);
     _currentUser = updated;
+    await _cacheUser(updated);
     notifyListeners();
   }
 
