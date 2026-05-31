@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,21 +22,49 @@ class AuthNotifier extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// Firebase는 세션을 자동 유지 — currentUser가 있으면 복원
-  Future<bool> tryAutoLogin() async {
-    final user = _auth.currentUser;
-    if (user == null) return false;
-    _currentUser = UserModel(
+  Future<UserModel> _loadUserModel(User user) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    if (doc.exists && doc.data() != null) {
+      final data = doc.data()!;
+      return UserModel.fromJson({...data, 'id': user.uid});
+    }
+    final initials = (user.displayName?.isNotEmpty == true)
+        ? user.displayName![0].toUpperCase()
+        : 'U';
+    return UserModel(
       id: user.uid,
       username: user.email ?? '',
       name: user.displayName ?? '',
       email: user.email ?? '',
       password: '',
-      avatarInitials: (user.displayName?.isNotEmpty == true)
-          ? user.displayName![0].toUpperCase()
-          : 'U',
+      avatarInitials: initials,
       joinedAt: DateTime.now(),
     );
+  }
+
+  /// Firebase는 세션을 자동 유지 — currentUser가 있으면 복원
+  Future<bool> tryAutoLogin() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    try {
+      _currentUser = await _loadUserModel(user);
+    } catch (_) {
+      final initials = (user.displayName?.isNotEmpty == true)
+          ? user.displayName![0].toUpperCase()
+          : 'U';
+      _currentUser = UserModel(
+        id: user.uid,
+        username: user.email ?? '',
+        name: user.displayName ?? '',
+        email: user.email ?? '',
+        password: '',
+        avatarInitials: initials,
+        joinedAt: DateTime.now(),
+      );
+    }
     notifyListeners();
     return true;
   }
@@ -51,18 +80,23 @@ class AuthNotifier extends ChangeNotifier {
         email: email.trim(),
         password: password,
       );
-      final user = credential.user!;
-      _currentUser = UserModel(
-        id: user.uid,
-        username: user.email ?? '',
-        name: user.displayName ?? '',
-        email: user.email ?? '',
-        password: '',
-        avatarInitials: (user.displayName?.isNotEmpty == true)
-            ? user.displayName![0].toUpperCase()
-            : 'U',
-        joinedAt: DateTime.now(),
-      );
+      try {
+        _currentUser = await _loadUserModel(credential.user!);
+      } catch (_) {
+        final u = credential.user!;
+        final initials = (u.displayName?.isNotEmpty == true)
+            ? u.displayName![0].toUpperCase()
+            : 'U';
+        _currentUser = UserModel(
+          id: u.uid,
+          username: u.email ?? '',
+          name: u.displayName ?? '',
+          email: u.email ?? '',
+          password: '',
+          avatarInitials: initials,
+          joinedAt: DateTime.now(),
+        );
+      }
       _error = null;
     } on FirebaseAuthException catch (e) {
       _error = _mapFirebaseError(e.code);
@@ -86,12 +120,11 @@ class AuthNotifier extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // AuthService의 signUpAndSaveData를 호출하여 Auth 계정 및 Firestore 유저 데이터 동시 저장
       await _authService.signUpAndSaveData(
         email: email.trim(),
         password: password,
         name: name,
-        age: 0, // UI에 나이 입력 폼이 없으므로 기본값 0 전달
+        age: 0,
         weight: weightKg,
         height: heightCm,
         gender: gender,
@@ -99,24 +132,10 @@ class AuthNotifier extends ChangeNotifier {
       );
 
       final user = _auth.currentUser!;
-
-      // Firebase Auth에 displayName 저장
       await user.updateDisplayName(name);
 
-      final initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
-      _currentUser = UserModel(
-        id: user.uid,
-        username: email.trim(),
-        name: name,
-        email: email.trim(),
-        password: '',
-        avatarInitials: initials,
-        gender: gender,
-        heightCm: heightCm ?? 0,
-        weightKg: weightKg ?? 0,
-        workoutGoal: workoutGoal,
-        joinedAt: DateTime.now(),
-      );
+      // Firestore에서 실제 저장된 데이터를 읽어 단일 소스로 통일
+      _currentUser = await _loadUserModel(user);
       _error = null;
     } on FirebaseAuthException catch (e) {
       _error = _mapFirebaseError(e.code);

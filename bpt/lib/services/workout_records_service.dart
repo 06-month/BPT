@@ -1,17 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/auth/providers/auth_provider.dart';
 import '../models/workout_record_model.dart';
 import 'local_storage_service.dart';
 
 class WorkoutRecordsNotifier
     extends StateNotifier<List<WorkoutRecordModel>> {
   final LocalStorageService _storage;
+  final String? _uid;
 
-  WorkoutRecordsNotifier(this._storage)
-      : super(_storage.loadRecords());
+  WorkoutRecordsNotifier(this._storage, this._uid)
+      : super(_storage.loadRecords(uid: _uid));
 
   Future<void> addRecord(WorkoutRecordModel record) async {
-    await _storage.addRecord(record);
+    await _storage.addRecord(record, uid: _uid);
     state = [record, ...state];
   }
 
@@ -50,5 +52,9 @@ class WorkoutRecordsNotifier
 
 final workoutRecordsProvider = StateNotifierProvider<
     WorkoutRecordsNotifier, List<WorkoutRecordModel>>(
-  (ref) => WorkoutRecordsNotifier(ref.watch(localStorageServiceProvider)),
+  (ref) {
+    final storage = ref.watch(localStorageServiceProvider);
+    final uid = ref.watch(authNotifierProvider).currentUser?.id;
+    return WorkoutRecordsNotifier(storage, uid);
+  },
 );

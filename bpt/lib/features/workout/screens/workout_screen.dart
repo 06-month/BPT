@@ -57,13 +57,13 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
         'exerciseId': w.exerciseId,
         'exerciseName': findExercise(w.exerciseId).name,
         'exerciseNameKr': findExercise(w.exerciseId).nameKr,
-        'totalReps': w.currentReps,
-        'correctReps': w.correctReps,
-        'incorrectReps': w.incorrectReps,
+        'totalReps': w.accumulatedReps,
+        'correctReps': w.accumulatedCorrect,
+        'incorrectReps': w.accumulatedIncorrect,
         'elapsedSeconds': w.elapsedSeconds,
         'postureScore': w.postureScore,
         'feedbackHistory': w.feedbackHistory,
-        'targetReps': w.targetReps,
+        'targetReps': w.targetReps * w.targetSets,
         'targetSets': w.targetSets,
       },
     );
@@ -85,6 +85,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
       }
     });
 
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -97,6 +98,15 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
           _GradientOverlay(),
           if (w.status == WorkoutStatus.countdown)
             _CountdownOverlay(value: w.countdownValue, strings: s),
+          if (w.status == WorkoutStatus.setComplete)
+            _SetCompleteOverlay(
+              completedSet: w.currentSet,
+              nextSet: w.currentSet + 1,
+              totalSets: w.targetSets,
+              isKo: s.locale == 'ko',
+              onNext: () =>
+                  ref.read(workoutProvider.notifier).startNextSet(),
+            ),
           Positioned(
             top: 0,
             left: 0,
@@ -600,5 +610,126 @@ class _ScoreChip extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ── Set Complete Overlay ───────────────────────────────────────────────────
+class _SetCompleteOverlay extends StatelessWidget {
+  const _SetCompleteOverlay({
+    required this.completedSet,
+    required this.nextSet,
+    required this.totalSets,
+    required this.isKo,
+    required this.onNext,
+  });
+  final int completedSet;
+  final int nextSet;
+  final int totalSets;
+  final bool isKo;
+  final VoidCallback onNext;
+
+  String _ordinalKr(int n) {
+    const names = ['', '첫번째', '두번째', '세번째', '네번째', '다섯번째'];
+    if (n < names.length) return names[n];
+    return '$n번째';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final completedLabel =
+        isKo ? _ordinalKr(completedSet) : _ordinalEn(completedSet);
+    final nextLabel =
+        isKo ? _ordinalKr(nextSet) : _ordinalEn(nextSet);
+
+    final title = isKo
+        ? '$completedLabel 세트 완료!'
+        : 'Set $completedSet Complete!';
+    final subtitle = isKo
+        ? '$nextLabel 세트를 시작하려면 아래 버튼을 눌러주세요'
+        : 'Press the button below to start set $nextSet';
+    final btnLabel = isKo ? '$nextLabel 세트 시작하기' : 'Start Set $nextSet';
+
+    return Container(
+      color: Colors.black87,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  border: Border.all(color: AppColors.primary, width: 2.5),
+                ),
+                child: const Icon(Icons.check_rounded,
+                    color: AppColors.primary, size: 40),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.65),
+                  fontSize: 15,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isKo
+                    ? '$completedSet / $totalSets 세트 완료'
+                    : '$completedSet / $totalSets sets done',
+                style: TextStyle(
+                  color: AppColors.primary.withValues(alpha: 0.8),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: onNext,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: Text(
+                    btnLabel,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _ordinalEn(int n) {
+    if (n == 1) return '1st';
+    if (n == 2) return '2nd';
+    if (n == 3) return '3rd';
+    return '${n}th';
   }
 }

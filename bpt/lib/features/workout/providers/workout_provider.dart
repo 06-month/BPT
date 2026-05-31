@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/mock_data.dart';
 
-enum WorkoutStatus { idle, countdown, active, paused, complete }
+enum WorkoutStatus { idle, countdown, active, paused, setComplete, complete }
 
 class WorkoutState {
   final WorkoutStatus status;
@@ -22,6 +22,9 @@ class WorkoutState {
   final List<String> feedbackHistory;
   final double postureScore;
   final bool isPoseDetected;
+  final int accumulatedReps;
+  final int accumulatedCorrect;
+  final int accumulatedIncorrect;
 
   const WorkoutState({
     this.status = WorkoutStatus.idle,
@@ -38,6 +41,9 @@ class WorkoutState {
     this.feedbackHistory = const [],
     this.postureScore = 0,
     this.isPoseDetected = false,
+    this.accumulatedReps = 0,
+    this.accumulatedCorrect = 0,
+    this.accumulatedIncorrect = 0,
   });
 
   WorkoutState copyWith({
@@ -55,6 +61,9 @@ class WorkoutState {
     List<String>? feedbackHistory,
     double? postureScore,
     bool? isPoseDetected,
+    int? accumulatedReps,
+    int? accumulatedCorrect,
+    int? accumulatedIncorrect,
   }) {
     return WorkoutState(
       status: status ?? this.status,
@@ -71,6 +80,9 @@ class WorkoutState {
       feedbackHistory: feedbackHistory ?? this.feedbackHistory,
       postureScore: postureScore ?? this.postureScore,
       isPoseDetected: isPoseDetected ?? this.isPoseDetected,
+      accumulatedReps: accumulatedReps ?? this.accumulatedReps,
+      accumulatedCorrect: accumulatedCorrect ?? this.accumulatedCorrect,
+      accumulatedIncorrect: accumulatedIncorrect ?? this.accumulatedIncorrect,
     );
   }
 
@@ -173,15 +185,39 @@ class WorkoutNotifier extends StateNotifier<WorkoutState> {
 
     if (newReps >= state.targetReps) {
       _stopAllTimers();
-      state = state.copyWith(
-        currentReps: newReps,
-        correctReps: newCorrect,
-        incorrectReps: newIncorrect,
-        feedbackHistory: history,
-        status: WorkoutStatus.complete,
-        feedbackMessage: 'Set complete! Great job!',
-        postureScore: _simulateScore(),
-      );
+      final newAccReps = state.accumulatedReps + newReps;
+      final newAccCorrect = state.accumulatedCorrect + newCorrect;
+      final newAccIncorrect = state.accumulatedIncorrect + newIncorrect;
+
+      if (state.currentSet < state.targetSets) {
+        // 더 남은 세트 있음 → setComplete 상태로 전환
+        state = state.copyWith(
+          currentReps: newReps,
+          correctReps: newCorrect,
+          incorrectReps: newIncorrect,
+          accumulatedReps: newAccReps,
+          accumulatedCorrect: newAccCorrect,
+          accumulatedIncorrect: newAccIncorrect,
+          feedbackHistory: history,
+          status: WorkoutStatus.setComplete,
+          feedbackMessage: 'Set ${state.currentSet} complete!',
+          postureScore: _simulateScore(),
+        );
+      } else {
+        // 모든 세트 완료
+        state = state.copyWith(
+          currentReps: newReps,
+          correctReps: newCorrect,
+          incorrectReps: newIncorrect,
+          accumulatedReps: newAccReps,
+          accumulatedCorrect: newAccCorrect,
+          accumulatedIncorrect: newAccIncorrect,
+          feedbackHistory: history,
+          status: WorkoutStatus.complete,
+          feedbackMessage: 'Workout complete! Great job!',
+          postureScore: _simulateScore(),
+        );
+      }
     } else {
       state = state.copyWith(
         currentReps: newReps,
@@ -192,6 +228,31 @@ class WorkoutNotifier extends StateNotifier<WorkoutState> {
         postureScore: _simulateScore(),
       );
     }
+  }
+
+  void startNextSet() {
+    final nextSet = state.currentSet + 1;
+    state = state.copyWith(
+      status: WorkoutStatus.countdown,
+      currentSet: nextSet,
+      currentReps: 0,
+      correctReps: 0,
+      incorrectReps: 0,
+      countdownValue: 3,
+      isPoseDetected: false,
+      feedbackMessage: 'Get ready for set $nextSet!',
+    );
+
+    int count = 3;
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      count--;
+      if (count <= 0) {
+        t.cancel();
+        _startActive();
+      } else {
+        state = state.copyWith(countdownValue: count);
+      }
+    });
   }
 
   void pauseWorkout() {
