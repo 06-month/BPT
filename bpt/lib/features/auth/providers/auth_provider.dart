@@ -102,7 +102,9 @@ class AuthNotifier extends ChangeNotifier {
       _currentUser = fromFirestore;
       await _cacheUser(fromFirestore); // Firestore 최신값으로 캐시 갱신
     } else {
-      _currentUser = await _loadCachedUser(user.uid) ?? _fallbackUser(user);
+      final fromCache = await _loadCachedUser(user.uid);
+      _currentUser = fromCache ?? _fallbackUser(user);
+      if (fromCache != null) _syncToFirestore(fromCache);
     }
     notifyListeners();
     return true;
@@ -125,7 +127,10 @@ class AuthNotifier extends ChangeNotifier {
         _currentUser = fromFirestore;
         await _cacheUser(fromFirestore); // Firestore 최신값으로 캐시 갱신
       } else {
-        _currentUser = await _loadCachedUser(u.uid) ?? _fallbackUser(u);
+        final fromCache = await _loadCachedUser(u.uid);
+        _currentUser = fromCache ?? _fallbackUser(u);
+        // 캐시에 신체 정보가 있는데 Firestore에 없으면 동기화
+        if (fromCache != null) _syncToFirestore(fromCache);
       }
       _error = null;
     } on FirebaseAuthException catch (e) {
@@ -153,20 +158,16 @@ class AuthNotifier extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _authService.signUpAndSaveData(
+      // 1. Firebase Auth 계정 생성
+      final credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
-        name: name,
-        birthDate: birthDate,
-        weight: weightKg,
-        height: heightCm,
-        gender: gender,
-        goal: workoutGoal,
       );
-
-      final user = _auth.currentUser!;
+      final user = credential.user!;
       await user.updateDisplayName(name);
 
+      // 2. 즉시 _currentUser 설정 + 로컬 캐시 저장
+      //    Firestore 저장 실패와 무관하게 로그인 상태 유지
       final initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
       _currentUser = UserModel(
         id: user.uid,
@@ -182,8 +183,24 @@ class AuthNotifier extends ChangeNotifier {
         workoutGoal: workoutGoal,
         joinedAt: DateTime.now(),
       );
-      // 로컬 캐시에 저장 — 로그아웃 후 재로그인 시 Firestore 없이도 복원 가능
       await _cacheUser(_currentUser!);
+
+      // 3. Firestore 저장 — 실패해도 로그인은 유지됨
+      try {
+        await _authService.saveUserData(
+          uid: user.uid,
+          name: name,
+          email: email.trim(),
+          birthDate: birthDate,
+          weight: weightKg,
+          height: heightCm,
+          gender: gender,
+          goal: workoutGoal,
+        );
+      } catch (_) {
+        // 로컬 캐시에 저장되어 있으므로 재로그인 시 Firestore로 자동 동기화
+      }
+
       _error = null;
     } on FirebaseAuthException catch (e) {
       _error = _mapFirebaseError(e.code);
@@ -193,6 +210,24 @@ class AuthNotifier extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  // 캐시 데이터를 Firestore에 동기화 (fire-and-forget)
+  Future<void> _syncToFirestore(UserModel user) async {
+    try {
+      await _authService.saveUserData(
+        uid: user.id,
+        name: user.name,
+        email: user.email,
+        birthDate: user.birthDate,
+        weight: user.weightKg,
+        height: user.heightCm,
+        gender: user.gender,
+        goal: user.workoutGoal,
+      );
+    } catch (_) {
+      // 다음 로그인 시 재시도
+    }
   }
 
   Future<void> updateProfile(UserModel updated) async {
