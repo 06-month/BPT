@@ -7,7 +7,6 @@ import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/mock_data.dart';
 import '../../../models/exercise_model.dart';
-import '../providers/workout_provider.dart';
 
 final _selectedExerciseIdProvider = StateProvider<String>((ref) => 'squat');
 final _targetRepsProvider = StateProvider<int>((ref) => 15);
@@ -50,8 +49,7 @@ class ExerciseSelectionScreen extends ConsumerWidget {
                   Text(
                     s.aiTrackForm,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -74,9 +72,8 @@ class ExerciseSelectionScreen extends ConsumerWidget {
                         isSelected: isSelected,
                         strings: s,
                         onTap: () {
-                          ref
-                              .read(_selectedExerciseIdProvider.notifier)
-                              .state = ex.id;
+                          ref.read(_selectedExerciseIdProvider.notifier).state =
+                              ex.id;
                           ref.read(_targetRepsProvider.notifier).state =
                               ex.defaultReps == 0
                                   ? ex.defaultDurationSeconds
@@ -108,12 +105,14 @@ class ExerciseSelectionScreen extends ConsumerWidget {
             sets: targetSets,
             strings: s,
             onStart: () {
-              ref.read(workoutProvider.notifier).initialize(
-                    selectedEx.id,
-                    targetReps,
-                    targetSets,
-                  );
-              context.push(RouteConstants.workout, extra: selectedEx.id);
+              context.push(
+                RouteConstants.nativePoseWorkout,
+                extra: {
+                  'exerciseId': selectedEx.id,
+                  'targetReps': targetReps,
+                  'targetSets': targetSets,
+                },
+              );
             },
           ),
         ],
@@ -157,9 +156,7 @@ class _ExerciseCard extends StatelessWidget {
               : (isDark ? AppColors.darkCard : AppColors.lightCard),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? exercise.accentColor
-                : Colors.transparent,
+            color: isSelected ? exercise.accentColor : Colors.transparent,
             width: 2,
           ),
           boxShadow: isSelected
@@ -183,8 +180,7 @@ class _ExerciseCard extends StatelessWidget {
                     color: exercise.accentColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Image.asset(exercise.imagePath,
-                      width: 22, height: 22),
+                  child: Image.asset(exercise.imagePath, width: 22, height: 22),
                 ),
                 const Spacer(),
                 if (isSelected)
@@ -216,8 +212,7 @@ class _ExerciseCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color:
-                              exercise.accentColor.withValues(alpha: 0.1),
+                          color: exercise.accentColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -411,9 +406,10 @@ class _BottomCTA extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final s = strings;
-    final exName =
-        s.locale == 'ko' ? exercise.nameKr : exercise.name;
-    final unit = exercise.type == ExerciseType.duration ? 's' : ' ${s.reps}';
+    final exName = s.locale == 'ko' ? exercise.nameKr : exercise.name;
+    final startLabel = s.locale == 'ko'
+        ? '$exName $reps * $sets 시작'
+        : 'Start $exName $reps × $sets';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
@@ -421,25 +417,22 @@ class _BottomCTA extends StatelessWidget {
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         border: Border(
           top: BorderSide(
-            color: isDark
-                ? AppColors.darkDivider
-                : AppColors.lightDivider,
+            color: isDark ? AppColors.darkDivider : AppColors.lightDivider,
           ),
         ),
       ),
       child: SafeArea(
         top: false,
-        child: ElevatedButton.icon(
+        child: ElevatedButton(
           onPressed: onStart,
-          icon: const Icon(Icons.play_arrow_rounded, size: 22),
-          label: Text('${s.start} $exName  •  $sets × $reps$unit'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: exercise.accentColor,
+            backgroundColor: AppColors.primary,
             minimumSize: const Size(double.infinity, 54),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
           ),
+          child: Text(startLabel),
         ),
       ),
     );

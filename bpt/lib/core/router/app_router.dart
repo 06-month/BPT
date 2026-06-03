@@ -9,6 +9,7 @@ import '../../features/profile/screens/profile_screen.dart';
 import '../../features/report/screens/report_screen.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/workout/screens/exercise_selection_screen.dart';
+import '../../features/workout/screens/native_pose_workout_screen.dart';
 import '../../features/workout/screens/workout_result_screen.dart';
 import '../../features/workout/screens/workout_screen.dart';
 import '../constants/route_constants.dart';
@@ -35,8 +36,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: RouteConstants.splash,
-        pageBuilder: (context, state) =>
-            _fadePage(state, const SplashScreen()),
+        pageBuilder: (context, state) => _fadePage(state, const SplashScreen()),
       ),
       GoRoute(
         path: RouteConstants.login,
@@ -78,10 +78,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: RouteConstants.nativePoseWorkout,
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+          var exerciseId = 'squat';
+          var targetReps = 15;
+          var targetSets = 3;
+          if (extra is Map) {
+            exerciseId = extra['exerciseId'] as String? ?? exerciseId;
+            targetReps = extra['targetReps'] as int? ?? targetReps;
+            targetSets = extra['targetSets'] as int? ?? targetSets;
+          } else if (extra is String) {
+            exerciseId = extra;
+          }
+          return _slidePage(
+            state,
+            NativePoseWorkoutScreen(
+              exerciseId: exerciseId,
+              targetReps: targetReps,
+              targetSets: targetSets,
+            ),
+          );
+        },
+      ),
+      GoRoute(
         path: RouteConstants.workoutResult,
         pageBuilder: (context, state) {
-          final result =
-              state.extra as Map<String, dynamic>? ?? const {};
+          final result = state.extra as Map<String, dynamic>? ?? const {};
           return _slidePage(state, WorkoutResultScreen(result: result));
         },
       ),

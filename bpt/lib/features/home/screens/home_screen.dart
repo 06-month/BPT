@@ -8,14 +8,13 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/mock_data.dart';
 import '../../../models/exercise_model.dart';
 import '../../../models/workout_record_model.dart';
-import '../../../features/workout/providers/workout_provider.dart';
 import '../providers/home_provider.dart';
 
 // ── File-level state for home exercise picker ──────────────────────────────
 final _selectedExIdProvider =
     StateProvider<String>((ref) => mockExercises.first.id);
-final _homeRepsProvider = StateProvider<int>(
-    (ref) => mockExercises.first.defaultReps == 0
+final _homeRepsProvider = StateProvider<int>((ref) =>
+    mockExercises.first.defaultReps == 0
         ? mockExercises.first.defaultDurationSeconds
         : mockExercises.first.defaultReps);
 final _homeSetsProvider =
@@ -40,8 +39,7 @@ class HomeScreen extends ConsumerWidget {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 if ((summary['streak'] as int) >= 1)
-                  _StreakBanner(
-                      streak: summary['streak'] as int, strings: s),
+                  _StreakBanner(streak: summary['streak'] as int, strings: s),
                 const SizedBox(height: 20),
                 _TodaySummaryCard(summary: summary, strings: s),
                 const SizedBox(height: 28),
@@ -60,8 +58,8 @@ class HomeScreen extends ConsumerWidget {
                 if (recent.isEmpty)
                   _EmptyWorkoutState(strings: s)
                 else
-                  ...recent.map(
-                      (r) => _RecentWorkoutTile(record: r, strings: s)),
+                  ...recent
+                      .map((r) => _RecentWorkoutTile(record: r, strings: s)),
                 const SizedBox(height: 28),
                 _SectionHeader(title: s.selectExercise),
                 const SizedBox(height: 12),
@@ -115,8 +113,8 @@ class _BPTAppBar extends StatelessWidget {
                     Text(
                       _greeting(strings),
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.55),
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.55),
                       ),
                     ),
                     Text(
@@ -149,8 +147,7 @@ class _BPTAppBar extends StatelessWidget {
 
 // ── Today Summary Card ─────────────────────────────────────────────────────
 class _TodaySummaryCard extends StatelessWidget {
-  const _TodaySummaryCard(
-      {required this.summary, required this.strings});
+  const _TodaySummaryCard({required this.summary, required this.strings});
   final Map<String, dynamic> summary;
   final dynamic strings;
 
@@ -201,8 +198,7 @@ class _TodaySummaryCard extends StatelessWidget {
                 icon: Icons.timer_outlined,
               ),
               _StatItem(
-                value:
-                    '${summary['avgPostureScore'].toStringAsFixed(0)}%',
+                value: '${summary['avgPostureScore'].toStringAsFixed(0)}%',
                 label: s.avgScore,
                 icon: Icons.star_outline_rounded,
               ),
@@ -260,7 +256,9 @@ class _StreakBanner extends StatelessWidget {
       return isKo ? '오늘 첫 번째 운동! 열심히 해봅시다!' : 'First workout today! Let\'s go!';
     }
     if (streak <= 3) {
-      return isKo ? '$streak일 연속! 좋은 시작이에요' : '$streak-day streak! Great start!';
+      return isKo
+          ? '$streak일 연속! 좋은 시작이에요'
+          : '$streak-day streak! Great start!';
     }
     if (streak <= 6) {
       return isKo ? '$streak일 연속! 잘 하고 있어요' : '$streak-day streak! Keep it up!';
@@ -359,8 +357,8 @@ class _WeeklyGoalCard extends ConsumerWidget {
                           ? '이번 주 $current / $goal 회'
                           : '$current / $goal this week',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.5),
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                   ],
@@ -472,8 +470,7 @@ class _SectionHeader extends StatelessWidget {
 
 // ── Recent Workout Tile ────────────────────────────────────────────────────
 class _RecentWorkoutTile extends StatelessWidget {
-  const _RecentWorkoutTile(
-      {required this.record, required this.strings});
+  const _RecentWorkoutTile({required this.record, required this.strings});
   final WorkoutRecordModel record;
   final dynamic strings;
 
@@ -556,8 +553,8 @@ class _RecentWorkoutTile extends StatelessWidget {
                         ? '${record.totalReps} ${s.reps}  •  ${record.durationFormatted}'
                         : record.durationFormatted,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.55),
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.55),
                     ),
                   ),
                 ],
@@ -578,16 +575,14 @@ class _RecentWorkoutTile extends StatelessWidget {
                 Text(
                   _timeAgo(record.date, s),
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.45),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
                   ),
                 ),
               ],
             ),
             const SizedBox(width: 4),
             Icon(Icons.chevron_right_rounded,
-                color:
-                    theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                 size: 18),
           ],
         ),
@@ -622,16 +617,14 @@ class _EmptyWorkoutState extends StatelessWidget {
             isKo ? '아직 운동 기록이 없어요' : 'No workouts yet',
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color:
-                  theme.colorScheme.onSurface.withValues(alpha: 0.45),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             isKo ? '아래에서 운동을 선택하고 시작해봐요!' : 'Pick an exercise below and start!',
             style: theme.textTheme.bodySmall?.copyWith(
-              color:
-                  theme.colorScheme.onSurface.withValues(alpha: 0.3),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
             ),
           ),
         ],
@@ -675,12 +668,10 @@ class _ExercisePickerGrid extends ConsumerWidget {
         return GestureDetector(
           onTap: () {
             ref.read(_selectedExIdProvider.notifier).state = ex.id;
-            ref.read(_homeRepsProvider.notifier).state =
-                ex.defaultReps == 0
-                    ? ex.defaultDurationSeconds
-                    : ex.defaultReps;
-            ref.read(_homeSetsProvider.notifier).state =
-                ex.defaultSets;
+            ref.read(_homeRepsProvider.notifier).state = ex.defaultReps == 0
+                ? ex.defaultDurationSeconds
+                : ex.defaultReps;
+            ref.read(_homeSetsProvider.notifier).state = ex.defaultSets;
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -691,9 +682,7 @@ class _ExercisePickerGrid extends ConsumerWidget {
                   : (isDark ? AppColors.darkCard : AppColors.lightCard),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected
-                    ? ex.accentColor
-                    : Colors.transparent,
+                color: isSelected ? ex.accentColor : Colors.transparent,
                 width: 2,
               ),
               boxShadow: isSelected
@@ -711,8 +700,7 @@ class _ExercisePickerGrid extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Image.asset(ex.imagePath,
-                        width: 30, height: 30),
+                    Image.asset(ex.imagePath, width: 30, height: 30),
                     const Spacer(),
                     if (isSelected)
                       Icon(Icons.check_circle_rounded,
@@ -722,8 +710,8 @@ class _ExercisePickerGrid extends ConsumerWidget {
                 const Spacer(),
                 Text(
                   s.locale == 'ko' ? ex.nameKr : ex.name,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700),
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -756,8 +744,7 @@ class _WorkoutConfigPanel extends ConsumerWidget {
     final selectedId = ref.watch(_selectedExIdProvider);
     final reps = ref.watch(_homeRepsProvider);
     final sets = ref.watch(_homeSetsProvider);
-    final ex =
-        mockExercises.firstWhere((e) => e.id == selectedId);
+    final ex = mockExercises.firstWhere((e) => e.id == selectedId);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -781,8 +768,7 @@ class _WorkoutConfigPanel extends ConsumerWidget {
               min: 5,
               max: 50,
               step: 1,
-              onChanged: (v) =>
-                  ref.read(_homeRepsProvider.notifier).state = v,
+              onChanged: (v) => ref.read(_homeRepsProvider.notifier).state = v,
             )
           else
             _StepControl(
@@ -791,8 +777,7 @@ class _WorkoutConfigPanel extends ConsumerWidget {
               min: 10,
               max: 300,
               step: 10,
-              onChanged: (v) =>
-                  ref.read(_homeRepsProvider.notifier).state = v,
+              onChanged: (v) => ref.read(_homeRepsProvider.notifier).state = v,
             ),
           const SizedBox(height: 14),
           _StepControl(
@@ -801,8 +786,7 @@ class _WorkoutConfigPanel extends ConsumerWidget {
             min: 1,
             max: 10,
             step: 1,
-            onChanged: (v) =>
-                ref.read(_homeSetsProvider.notifier).state = v,
+            onChanged: (v) => ref.read(_homeSetsProvider.notifier).state = v,
           ),
         ],
       ),
@@ -831,14 +815,12 @@ class _StepControl extends StatelessWidget {
     final theme = Theme.of(context);
     return Row(
       children: [
-        Expanded(
-            child: Text(label, style: theme.textTheme.bodyMedium)),
+        Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
         Row(
           children: [
             _CircleBtn(
               icon: Icons.remove,
-              onTap:
-                  value > min ? () => onChanged(value - step) : null,
+              onTap: value > min ? () => onChanged(value - step) : null,
             ),
             const SizedBox(width: 14),
             SizedBox(
@@ -853,8 +835,7 @@ class _StepControl extends StatelessWidget {
             const SizedBox(width: 14),
             _CircleBtn(
               icon: Icons.add,
-              onTap:
-                  value < max ? () => onChanged(value + step) : null,
+              onTap: value < max ? () => onChanged(value + step) : null,
             ),
           ],
         ),
@@ -905,10 +886,11 @@ class _StartButton extends ConsumerWidget {
     final selectedId = ref.watch(_selectedExIdProvider);
     final reps = ref.watch(_homeRepsProvider);
     final sets = ref.watch(_homeSetsProvider);
-    final ex =
-        mockExercises.firstWhere((e) => e.id == selectedId);
+    final ex = mockExercises.firstWhere((e) => e.id == selectedId);
     final exName = s.locale == 'ko' ? ex.nameKr : ex.name;
-    final unit = ex.type == ExerciseType.duration ? 's' : ' ${s.reps}';
+    final startLabel = s.locale == 'ko'
+        ? '$exName $reps * $sets 시작'
+        : 'Start $exName $reps × $sets';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -916,29 +898,28 @@ class _StartButton extends ConsumerWidget {
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         border: Border(
           top: BorderSide(
-            color: isDark
-                ? AppColors.darkDivider
-                : AppColors.lightDivider,
+            color: isDark ? AppColors.darkDivider : AppColors.lightDivider,
           ),
         ),
       ),
       child: SafeArea(
         top: false,
-        child: ElevatedButton.icon(
+        child: ElevatedButton(
           onPressed: () {
-            ref.read(workoutProvider.notifier).initialize(
-                  selectedId,
-                  reps,
-                  sets,
-                );
-            context.push(RouteConstants.workout, extra: selectedId);
+            context.push(
+              RouteConstants.nativePoseWorkout,
+              extra: {
+                'exerciseId': selectedId,
+                'targetReps': reps,
+                'targetSets': sets,
+              },
+            );
           },
-          icon: const Icon(Icons.play_arrow_rounded, size: 26),
-          label: Text(
-              '${s.start} $exName  •  $sets × $reps$unit'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: ex.accentColor,
+            backgroundColor: AppColors.primary,
+            minimumSize: const Size(double.infinity, 54),
           ),
+          child: Text(startLabel),
         ),
       ),
     );
