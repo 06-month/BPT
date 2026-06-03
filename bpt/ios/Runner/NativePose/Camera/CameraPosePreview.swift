@@ -133,6 +133,7 @@ final class CameraPoseViewModel: ObservableObject {
     @Published var currentFrame: CameraFrameData?
     @Published var statusText = "Initializing..."
     @Published var cameraPermissionDenied = false
+    @Published var cameraSetupError: String? = nil
 
     private let exercise: NativePoseExercise
     private let captureManager = CameraCaptureManager()
@@ -161,6 +162,10 @@ final class CameraPoseViewModel: ObservableObject {
     }
 
     func requestCameraAndStart() {
+        #if targetEnvironment(simulator)
+        self.cameraSetupError = "simulator"
+        return
+        #endif
         AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
             Task { @MainActor in
                 guard let self else { return }
@@ -202,7 +207,7 @@ final class CameraPoseViewModel: ObservableObject {
         do {
             try captureManager.configure()
         } catch {
-            statusText = "Failed to configure camera: \(error.localizedDescription)"
+            cameraSetupError = error.localizedDescription
             return
         }
 
@@ -423,27 +428,49 @@ struct CameraPosePreview: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            if model.cameraPermissionDenied {
-                VStack(spacing: 12) {
-                    Image(systemName: "camera.fill")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
-                    Text("Camera Access Required")
+            if let error = model.cameraSetupError {
+                // 시뮬레이터 또는 카메라 초기화 실패
+                VStack(spacing: 16) {
+                    Image(systemName: error == "simulator" ? "iphone.slash" : "camera.slash.fill")
+                        .font(.system(size: 52))
+                        .foregroundStyle(.white.opacity(0.7))
+                    Text(error == "simulator"
+                         ? "시뮬레이터에서는\n카메라를 사용할 수 없습니다"
+                         : "카메라를 시작할 수 없습니다")
                         .font(.title3.bold())
-                    Text("Enable camera access in Settings to use live pose analysis.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+                    Text(error == "simulator"
+                         ? "실기기에서 테스트해 주세요."
+                         : error)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.55))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+            } else if model.cameraPermissionDenied {
+                VStack(spacing: 16) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 52))
+                        .foregroundStyle(.white.opacity(0.7))
+                    Text("카메라 권한이 필요합니다")
+                        .font(.title3.bold())
+                        .foregroundStyle(.white)
+                    Text("설정 앱에서 카메라 접근을 허용해주세요.")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.55))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
                 }
             } else if let frame = model.currentFrame {
                 CameraFrameView(frame: frame)
             } else {
                 VStack(spacing: 12) {
                     ProgressView()
+                        .tint(.white)
                     Text(model.statusText)
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.7))
                 }
             }
         }

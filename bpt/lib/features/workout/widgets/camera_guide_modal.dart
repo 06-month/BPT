@@ -93,7 +93,8 @@ class _CameraGuideSheet extends StatelessWidget {
         top: 16,
         bottom: MediaQuery.of(context).viewInsets.bottom + 32,
       ),
-      child: Column(
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // 핸들바
@@ -172,9 +173,8 @@ class _CameraGuideSheet extends StatelessWidget {
             child: guide != null
                 ? Image.asset(
                     guide!.imagePath,
-                    height: 210,
                     width: double.infinity,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) =>
                         _ImagePlaceholder(isKo: isKo),
                   )
@@ -218,6 +218,7 @@ class _CameraGuideSheet extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }
