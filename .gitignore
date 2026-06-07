@@ -7,7 +7,6 @@ bpt/.flutter-plugins
 bpt/.flutter-plugins-dependencies
 bpt/build/
 bpt/.packages
-bpt/pubspec.lock
 
 # macOS
 .DS_Store
