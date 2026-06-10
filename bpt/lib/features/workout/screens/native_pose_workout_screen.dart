@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/route_constants.dart';
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/mock_data.dart';
@@ -56,6 +58,7 @@ class _NativePoseWorkoutScreenState
   int _latestNativeRep = 0; // most recent native cumulative rep
   bool _setComplete = false;
   bool _workoutComplete = false;
+  DateTime? _liveStartedAt;
 
   bool get _isSupportedExercise =>
       NativePoseWorkoutScreen.supportedExerciseIds.contains(widget.exerciseId);
@@ -66,6 +69,12 @@ class _NativePoseWorkoutScreenState
     if (v < 0) return 0;
     if (v > widget.targetReps) return widget.targetReps;
     return v;
+  }
+
+  int get _completedWorkoutReps {
+    final completedSets = (_currentSet - 1).clamp(0, widget.targetSets);
+    final total = completedSets * widget.targetReps + _repsThisSet;
+    return total.clamp(0, widget.targetReps * widget.targetSets);
   }
 
   @override
@@ -90,7 +99,10 @@ class _NativePoseWorkoutScreenState
       }
       if (_count <= 1) {
         timer.cancel();
-        setState(() => _phase = _PrepPhase.live);
+        setState(() {
+          _phase = _PrepPhase.live;
+          _liveStartedAt = DateTime.now();
+        });
       } else {
         setState(() => _count -= 1);
       }
@@ -137,7 +149,29 @@ class _NativePoseWorkoutScreenState
   }
 
   void _finishWorkout() {
-    if (mounted) Navigator.of(context).maybePop();
+    if (!mounted) return;
+
+    final exercise = findExercise(widget.exerciseId);
+    final elapsedSeconds = _liveStartedAt == null
+        ? 0
+        : DateTime.now().difference(_liveStartedAt!).inSeconds;
+
+    context.pushReplacement(
+      RouteConstants.workoutResult,
+      extra: {
+        'exerciseId': widget.exerciseId,
+        'exerciseName': exercise.name,
+        'exerciseNameKr': exercise.nameKr,
+        'totalReps': _completedWorkoutReps,
+        'correctReps': null,
+        'incorrectReps': null,
+        'elapsedSeconds': elapsedSeconds,
+        'postureScore': null,
+        'feedbackHistory': null,
+        'targetReps': widget.targetReps * widget.targetSets,
+        'targetSets': widget.targetSets,
+      },
+    );
   }
 
   @override
@@ -321,8 +355,7 @@ class _PrepOverlay extends StatelessWidget {
                 height: 26,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.4,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
               ),
             ],
@@ -417,8 +450,7 @@ class _BottomHud extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: progress,
                   backgroundColor: Colors.white12,
-                  valueColor:
-                      const AlwaysStoppedAnimation(AppColors.primary),
+                  valueColor: const AlwaysStoppedAnimation(AppColors.primary),
                   minHeight: 6,
                 ),
               ),

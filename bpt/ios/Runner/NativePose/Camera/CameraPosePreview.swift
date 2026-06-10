@@ -21,7 +21,6 @@ private enum CameraPreviewOptions {
 struct CameraFrameData: Identifiable {
     let id: Int
     let frameIndex: Int
-    let image: UIImage
     let imageWidth: Double
     let imageHeight: Double
     let coco17: [PoseKeypoint]
@@ -35,7 +34,6 @@ struct CameraFrameData: Identifiable {
 
 struct CameraProcessingResult {
     let frameIndex: Int
-    let image: UIImage
     let imageWidth: Double
     let imageHeight: Double
     let visualCoco17: [PoseKeypoint]
@@ -48,6 +46,7 @@ struct CameraProcessingResult {
 private final class CameraCaptureManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
 
     let session = AVCaptureSession()
+    private(set) var isFrontCamera = false
     private let processingQueue = DispatchQueue(label: "com.coremlpose.camera.processing", qos: .userInitiated)
     nonisolated(unsafe) private var isProcessingFrame = false
     nonisolated(unsafe) private var frameIndex = 0
@@ -64,6 +63,7 @@ private final class CameraCaptureManager: NSObject, AVCaptureVideoDataOutputSamp
             session.commitConfiguration()
             throw NSError(domain: "CameraCaptureManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No camera device found (neither front nor back wide angle)."])
         }
+        isFrontCamera = (device.position == .front)
 
         do {
             let input = try AVCaptureDeviceInput(device: device)
@@ -90,7 +90,7 @@ private final class CameraCaptureManager: NSObject, AVCaptureVideoDataOutputSamp
 
         if let connection = output.connection(with: .video) {
             if connection.isVideoMirroringSupported {
-                connection.isVideoMirrored = (device.position == .front)
+                connection.isVideoMirrored = isFrontCamera
             }
             if connection.isVideoOrientationSupported {
                 connection.videoOrientation = .portrait
@@ -137,6 +137,14 @@ final class CameraPoseViewModel: ObservableObject {
     private let exercise: NativePoseExercise
     private let captureManager = CameraCaptureManager()
     private let ciContext = CIContext(options: nil)
+
+    var captureSession: AVCaptureSession {
+        captureManager.session
+    }
+
+    var isFrontCamera: Bool {
+        captureManager.isFrontCamera
+    }
 
     // Reports rep/status changes to Flutter (HUD is rendered on the Flutter side).
     private let onUpdate: ((Int, String, Bool) -> Void)?
@@ -290,7 +298,6 @@ final class CameraPoseViewModel: ObservableObject {
 
                 let result = CameraProcessingResult(
                     frameIndex: frameIdx,
-                    image: UIImage(cgImage: cgImage),
                     imageWidth: Double(preprocess.imageWidth),
                     imageHeight: Double(preprocess.imageHeight),
                     visualCoco17: visualCoco17,
@@ -316,7 +323,6 @@ final class CameraPoseViewModel: ObservableObject {
         let frameData = CameraFrameData(
             id: result.frameIndex,
             frameIndex: result.frameIndex,
-            image: result.image,
             imageWidth: result.imageWidth,
             imageHeight: result.imageHeight,
             coco17: result.visualCoco17,
@@ -436,15 +442,13 @@ struct CameraPosePreview: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
-            } else if let frame = model.currentFrame {
-                CameraFrameView(frame: frame)
             } else {
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text(model.statusText)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+                CameraLiveView(
+                    session: model.captureSession,
+                    isMirrored: model.isFrontCamera,
+                    frame: model.currentFrame,
+                    statusText: model.statusText
+                )
             }
         }
         .navigationTitle(exercise.displayName)
@@ -458,33 +462,46 @@ struct CameraPosePreview: View {
     }
 }
 
-// MARK: - Frame view with overlays
+// MARK: - Live camera preview with overlays
 
-private struct CameraFrameView: View {
-    let frame: CameraFrameData
+private struct CameraLiveView: View {
+    let session: AVCaptureSession
+    let isMirrored: Bool
+    let frame: CameraFrameData?
+    let statusText: String
 
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
-                Image(uiImage: frame.image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
+                CameraPreviewLayerView(session: session, isMirrored: isMirrored)
                     .frame(width: proxy.size.width, height: proxy.size.height)
 
-                Canvas { context, size in
-                    drawSkeleton(context: &context, size: size)
-                    drawHands(context: &context, size: size)
+                if let frame {
+                    Canvas { context, size in
+                        drawSkeleton(frame: frame, context: &context, size: size)
+                        drawHands(frame: frame, context: &context, size: size)
+                    }
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                } else {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text(statusText)
+                            .font(.callout)
+                            .foregroundStyle(.white.opacity(0.72))
+                    }
+                    .frame(width: proxy.size.width, height: proxy.size.height)
                 }
-                .frame(width: proxy.size.width, height: proxy.size.height)
 
                 // HUD (rep/status) is rendered by Flutter at the bottom of the
                 // screen — intentionally no native top-left overlay here.
             }
+            .background(Color.black)
+            .clipped()
         }
     }
 
-    private func drawSkeleton(context: inout GraphicsContext, size: CGSize) {
-        let rect = aspectFitRect(imageWidth: frame.imageWidth, imageHeight: frame.imageHeight, in: size)
+    private func drawSkeleton(frame: CameraFrameData, context: inout GraphicsContext, size: CGSize) {
+        let rect = aspectFillRect(imageWidth: frame.imageWidth, imageHeight: frame.imageHeight, in: size)
         for edge in coco17Edges {
             guard edge.0 < frame.coco17.count, edge.1 < frame.coco17.count else { continue }
             let a = frame.coco17[edge.0]
@@ -492,13 +509,13 @@ private struct CameraFrameView: View {
             let minConfidence = min(a.confidence, b.confidence)
             let color = minConfidence >= 0.3 ? Color.green : Color.gray.opacity(0.35)
             var path = Path()
-            path.move(to: viewPoint(a, rect: rect))
-            path.addLine(to: viewPoint(b, rect: rect))
+            path.move(to: viewPoint(a, frame: frame, rect: rect))
+            path.addLine(to: viewPoint(b, frame: frame, rect: rect))
             context.stroke(path, with: .color(color), lineWidth: minConfidence >= 0.3 ? 4.0 : 2.0)
         }
 
         for keypoint in frame.coco17 {
-            let point = viewPoint(keypoint, rect: rect)
+            let point = viewPoint(keypoint, frame: frame, rect: rect)
             let radius = keypoint.confidence >= 0.3 ? 5.0 : 3.0
             let color = keypoint.confidence >= 0.3 ? Color.yellow : Color.gray.opacity(0.35)
             let circle = CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2.0, height: radius * 2.0)
@@ -506,8 +523,8 @@ private struct CameraFrameView: View {
         }
     }
 
-    private func drawHands(context: inout GraphicsContext, size: CGSize) {
-        let rect = aspectFitRect(imageWidth: frame.imageWidth, imageHeight: frame.imageHeight, in: size)
+    private func drawHands(frame: CameraFrameData, context: inout GraphicsContext, size: CGSize) {
+        let rect = aspectFillRect(imageWidth: frame.imageWidth, imageHeight: frame.imageHeight, in: size)
         HandOverlayRenderer.drawHands(
             frame.handResults,
             context: &context,
@@ -517,17 +534,20 @@ private struct CameraFrameView: View {
         )
     }
 
-    private func viewPoint(_ keypoint: PoseKeypoint, rect: CGRect) -> CGPoint {
+    private func viewPoint(_ keypoint: PoseKeypoint, frame: CameraFrameData, rect: CGRect) -> CGPoint {
         CGPoint(
             x: rect.minX + CGFloat(keypoint.x / frame.imageWidth) * rect.width,
             y: rect.minY + CGFloat(keypoint.y / frame.imageHeight) * rect.height
         )
     }
 
-    private func aspectFitRect(imageWidth: Double, imageHeight: Double, in size: CGSize) -> CGRect {
-        let scale = min(size.width / imageWidth, size.height / imageHeight)
-        let width = imageWidth * scale
-        let height = imageHeight * scale
+    private func aspectFillRect(imageWidth: Double, imageHeight: Double, in size: CGSize) -> CGRect {
+        guard imageWidth > 0, imageHeight > 0, size.width > 0, size.height > 0 else {
+            return .zero
+        }
+        let scale = max(size.width / CGFloat(imageWidth), size.height / CGFloat(imageHeight))
+        let width = CGFloat(imageWidth) * scale
+        let height = CGFloat(imageHeight) * scale
         return CGRect(
             x: (size.width - width) * 0.5,
             y: (size.height - height) * 0.5,
@@ -543,6 +563,47 @@ private struct CameraFrameView: View {
             (5, 11), (6, 12), (11, 12),
             (11, 13), (13, 15), (12, 14), (14, 16),
         ]
+    }
+}
+
+private struct CameraPreviewLayerView: UIViewRepresentable {
+    let session: AVCaptureSession
+    let isMirrored: Bool
+
+    func makeUIView(context: Context) -> CameraPreviewUIView {
+        let view = CameraPreviewUIView()
+        view.configure(session: session, isMirrored: isMirrored)
+        return view
+    }
+
+    func updateUIView(_ uiView: CameraPreviewUIView, context: Context) {
+        uiView.configure(session: session, isMirrored: isMirrored)
+    }
+}
+
+private final class CameraPreviewUIView: UIView {
+    override class var layerClass: AnyClass {
+        AVCaptureVideoPreviewLayer.self
+    }
+
+    private var previewLayer: AVCaptureVideoPreviewLayer {
+        layer as! AVCaptureVideoPreviewLayer
+    }
+
+    func configure(session: AVCaptureSession, isMirrored: Bool) {
+        if previewLayer.session !== session {
+            previewLayer.session = session
+        }
+        previewLayer.videoGravity = .resizeAspectFill
+
+        guard let connection = previewLayer.connection else { return }
+        if connection.isVideoOrientationSupported {
+            connection.videoOrientation = .portrait
+        }
+        if connection.isVideoMirroringSupported {
+            connection.automaticallyAdjustsVideoMirroring = false
+            connection.isVideoMirrored = isMirrored
+        }
     }
 }
 
