@@ -6,7 +6,7 @@ This repository was assembled on 2026-08-17 from three local working copies with
 
 - Flutter/iOS app: clean `origin/dev/ai` snapshot at `4bc3865` (`Fix native pose camera preview`).
 - Python pose-feedback source: local `dev/ai` work from the original BPT research checkout at `4614b63`, including the then-untracked source additions under `pose_feedback/experimental`, `scripts/`, and `tools/smoke`.
-- Native prototype: `/Users/6_month/workspace/BPT_native_test` was compared with the app snapshot. Its native integration was already represented by the app snapshot; the two differing source files were older than the fixes in `4bc3865` and were not used to overwrite the newer versions.
+- Native prototype: the local `BPT_native_test` working copy was compared with the app snapshot. Its native integration was already represented by the app snapshot; the two differing source files were older than the fixes in `4bc3865` and were not used to overwrite the newer versions.
 
 ## Intentionally excluded
 
