@@ -1,226 +1,132 @@
-# BPT - On-device AI Exercise Coaching
+<div align="center">
 
-BPT (Hanbat Personal Training) is a Flutter mobile application that analyzes exercise motion on an iPhone and turns 2D body keypoints into repetition, phase, and posture-state feedback. The runtime keeps camera frames on the device: Swift captures the camera stream, CoreML runs RTMPose-s, exercise-specific evaluators interpret the pose, and Flutter presents the workout flow and stores the result.
+<img src="docs/project/logo_BPT.png" alt="BPT" width="480">
 
-> Current Capstone Design I scope: the real-time AI path runs on iOS and evaluates five exercises from 2D body pose. MediaPipe Hands is an auxiliary visualization and wrist-alignment branch. Fine-grained wrist feedback and temporal 3D pose remain research-stage work and are not presented as completed product features.
+**아이폰 카메라만으로 운동 자세를 실시간 분석하는 온디바이스 AI 코칭 앱**
 
-**Project status: active development.** Capstone Design I is treated as a validated implementation milestone, not the end of the project. The next work is driven by the limitations measured or identified in that milestone.
+한밭대학교 캡스톤 디자인 I · 3인 팀 프로젝트 · 진행 중
 
-## Problem and scope
+`Flutter` · `Swift` · `CoreML` · `RTMPose-s` · `MediaPipe` · `Firebase`
 
-Exercise feedback on a phone has to connect several concerns that are often evaluated separately:
+</div>
 
-- stable camera capture and low-latency on-device inference;
-- consistent conversion between model, image, preview, and mirrored coordinates;
-- exercise phase tracking that does not count a repetition from a single noisy frame;
-- a mobile workflow for preparation, countdown, sets, results, authentication, and history;
-- honest handling of input failures, body-shape variation, and camera-angle sensitivity.
+---
 
-BPT addresses this as an integrated product pipeline rather than as a standalone pose-estimation demo.
+카메라 프레임은 기기 밖으로 나가지 않습니다. Swift가 카메라 스트림을 받고, CoreML이 RTMPose-s를 돌리고, 운동별 평가기가 관절 각도로 반복·자세 상태를 판정하고, Flutter가 운동 흐름과 기록을 담당합니다. 서버 추론도, 영상 업로드도 없습니다.
 
-## What is implemented
+## 데모
 
-### Mobile product workflow
+<!--
+스크린샷/데모 GIF를 docs/project/screens/ 에 넣고 아래 표의 경로를 맞춰주세요.
+권장: 운동 선택 → 카메라 준비 → 실시간 HUD → 결과 화면, 4장.
+-->
 
-The Flutter application provides:
+| 운동 선택 | 카메라 준비 | 실시간 판정 | 운동 결과 |
+| --- | --- | --- | --- |
+| _준비 중_ | _준비 중_ | _준비 중_ | _준비 중_ |
 
-- email authentication through Firebase Authentication;
-- Riverpod-based state separation and `go_router` navigation guards;
-- exercise selection, repetition and set targets, camera guidance, and countdown;
-- a native iOS camera view embedded with `UiKitView`;
-- workout result storage through Cloud Firestore with a SharedPreferences fallback;
-- daily, weekly, and monthly workout summaries;
-- Korean and English UI resources.
-
-### On-device pose pipeline
-
-The iOS runtime follows this path:
-
-1. capture a front-camera frame with AVFoundation;
-2. normalize and affine-warp the frame for RTMPose-s;
-3. run the bundled CoreML model;
-4. decode SimCC outputs into COCO17 keypoints and confidence values;
-5. restore keypoints to image and preview coordinates, including mirroring;
-6. evaluate exercise phase and joint-angle conditions;
-7. return `rep`, `status`, and `done` through a per-view MethodChannel;
-8. update Flutter set progress and route to the workout result flow.
+## 동작 방식
 
 ```mermaid
 flowchart LR
-    Camera[iPhone camera] --> Preprocess[Affine preprocessing]
-    Preprocess --> RTMPose[RTMPose-s CoreML]
-    RTMPose --> SimCC[SimCC decoding]
-    SimCC --> Coordinates[Inverse affine and preview mapping]
-    Coordinates --> Evaluator[Exercise evaluator]
-    Coordinates --> Hand[MediaPipe Hands auxiliary branch]
-    Evaluator --> Channel[PlatformView and MethodChannel]
-    Channel --> HUD[Flutter workout HUD]
-    HUD --> Result[Workout result]
-    Result --> Firestore[Cloud Firestore]
-    Result --> Local[SharedPreferences fallback]
+    Cam[아이폰 카메라] --> Pre[Affine 전처리]
+    Pre --> RTM[RTMPose-s CoreML]
+    RTM --> SimCC[SimCC 디코딩]
+    SimCC --> Coord[역 affine · 프리뷰 좌표 복원]
+    Coord --> Eval[운동별 평가기]
+    Coord --> Hand[MediaPipe Hands 보조]
+    Eval --> Ch[PlatformView / MethodChannel]
+    Ch --> HUD[Flutter 운동 HUD]
+    HUD --> Res[결과 저장 · Firestore]
 ```
 
-### Exercise evaluators
+좌표계가 이 파이프라인의 핵심 난이도입니다. RTMPose 입력 좌표, 카메라 픽셀, 프리뷰 좌표, 셀피 미러 좌표가 전부 다르기 때문에 affine 변환을 보존했다가 디코딩된 키포인트를 원본과 프리뷰 공간으로 되돌린 뒤에 평가와 렌더링을 합니다.
 
-All five evaluators share the body-pose output but keep exercise-specific state and thresholds.
+## 지원 운동
 
-| Exercise | Evaluator | Main signals |
+| 운동 | 평가기 | 주요 신호 |
 | --- | --- | --- |
-| Squat | `SquatEvaluator` | knee and hip angles, torso inclination, descent/ascent state |
-| Bench press | `BenchPressEvaluator` | elbow angle, shoulder-elbow-wrist alignment, lowering/pressing state |
-| Deadlift | `DeadliftEvaluator` | hip and knee angles, torso inclination, lifting state |
-| Barbell row | `BarbellRowEvaluator` | torso inclination, elbow motion, pull range |
-| Push-up | `PushUpEvaluator` | elbow angle, shoulder-elbow-wrist alignment, descent/ascent state |
+| 스쿼트 | `SquatEvaluator` | 무릎·고관절 각도, 상체 기울기, 하강/상승 상태 |
+| 벤치프레스 | `BenchPressEvaluator` | 팔꿈치 각도, 어깨-팔꿈치-손목 정렬, 내림/미는 상태 |
+| 데드리프트 | `DeadliftEvaluator` | 고관절·무릎 각도, 상체 기울기, 리프팅 상태 |
+| 바벨로우 | `BarbellRowEvaluator` | 상체 기울기, 팔꿈치 이동, 당김 범위 |
+| 푸시업 | `PushUpEvaluator` | 팔꿈치 각도, 상체 정렬, 하강/상승 상태 |
 
-Candidate-state accumulation and consecutive-frame confirmation reduce repetition changes caused by transient keypoint noise. These heuristics improve runtime stability, but they are not a substitute for a measured accuracy benchmark.
+다섯 평가기 모두 같은 COCO17 출력을 쓰지만 상태와 임계값은 운동별로 분리돼 있습니다. 반복 수는 단일 프레임 임계값이 아니라 후보 상태 누적 + 연속 프레임 확인으로 판정해서, 키포인트가 한 프레임 튀었다고 카운트가 올라가지 않습니다.
 
-## Key engineering decisions
+## 내가 구현한 부분
 
-### Keep inference on the device
+3인 팀 프로젝트이고, 아래는 Git author와 변경 파일로 확인되는 저장소 소유자([@06-month](https://github.com/06-month))의 범위입니다.
 
-Camera frames are processed in the native iOS layer and are not sent to an inference server. This reduces dependence on network conditions and avoids uploading workout video for real-time analysis.
+- **모델 선정과 변환** — RTMPose-s 및 대안 pose/3D 모델 조사, CoreML 변환, 비교·진단 도구
+- **네이티브 추론 파이프라인** — AVFoundation 카메라 입력, CoreML 실행, SimCC 디코딩, affine 역변환과 프리뷰 좌표 매핑 (Swift 약 6,800줄)
+- **운동 평가기 5종** — phase 상태 머신, 후보 상태 누적, 연속 프레임 게이트
+- **MediaPipe Hands 보조 branch** — 손 오버레이와 손목 정렬 신호
+- **Flutter–네이티브 연결** — `UiKitView` PlatformView 등록, per-view MethodChannel, 세트·반복 진행과 결과 화면 라우팅
+- **Python 레퍼런스 파이프라인** — 포즈·손·손목·피드백 모듈과 테스트
+- **[Exercise3D 데이터셋 파이프라인](https://github.com/06-month/Exercise3D-Dataset-Pipeline)** — 3대 카메라 동기화 영상을 3D pseudo-label 데이터로 만드는 별도 저장소 (26개 시퀀스 중 24개 freeze-ready, 65,595 프레임)
 
-### Separate Flutter product logic from the native AI runtime
+팀 공동 작업: Flutter 화면 전반과 디자인 시스템, Firebase 인증·Firestore 연동, 프로필·리포트·통계, 운동 데이터 촬영.
 
-Flutter owns product navigation, preparation, set progression, results, and data persistence. Swift owns camera capture, CoreML execution, coordinate restoration, overlays, and exercise evaluation. `PlatformView` and `MethodChannel` form the boundary between the two layers.
+## 저장소 구조
 
-### Restore coordinates before evaluation and rendering
-
-RTMPose input coordinates, camera pixels, preview coordinates, and mirrored selfie coordinates are different spaces. The native pipeline preserves the affine transform and explicitly maps decoded keypoints back to the source and preview spaces.
-
-### Treat hand and 3D models as scoped extensions
-
-MediaPipe Hand Landmarker is currently used as an auxiliary hand overlay and wrist-alignment source. It does not yet drive wrist-bend or palm-rotation feedback. MotionAGFormer and other 2D-to-3D paths are retained as research and conversion tools, but the app evaluator currently consumes 2D COCO17 keypoints.
-
-## Related 3D dataset pipeline
-
-The three-person capstone team jointly recorded the exercise videos. The project owner then designed and implemented the separate [Exercise3D Dataset Pipeline](https://github.com/06-month/Exercise3D-Dataset-Pipeline), which turns synchronized three-camera recordings into quality-tracked 3D pseudo-label data.
-
-Its processing path covers audio/PTS synchronization, fixed-camera geometry, Sapiens2 2D pose, timestamp-aware triangulation, SAM 3D Body priors, sequence body fitting, quality metadata, and immutable private-dataset export. The repository publishes code, non-identifying aggregate measurements, and mesh-only previews rather than the private recordings.
-
-| Dataset snapshot | Value |
+| 경로 | 내용 |
 | --- | --- |
-| Participants | 3, recorded collaboratively by the team |
-| Exercises | 6 |
-| Synchronized sequences | 26 |
-| Camera views | 78 across 3 fixed cameras |
-| Working frames | 65,595 |
-| End-to-end status | 24/26 freeze-ready, REVIEW 24 / FAIL 0 |
+| `bpt/` | Flutter 앱 + iOS 네이티브 카메라/CoreML/MediaPipe 런타임 |
+| `pose_feedback/` | Python 포즈·손·손목·피드백 레퍼런스 구현 |
+| `scripts/` | 모델 변환, 벤치마크, 진단, 시각화 |
+| `tests/` | Python 단위·파이프라인 테스트 |
+| `tools/` | Swift/Python 스모크·프로파일링 도구 |
+| `docs/` | iOS 통합, CoreML 변환, 연구 노트 |
+| `models/`, `assets/`, `external/` | 로컬 복원용 가이드 (가중치와 대용량 자산은 미커밋) |
 
-This dataset work is related follow-up infrastructure for 3D research and evaluation. The current BPT mobile runtime does not require the private dataset and still evaluates 2D COCO17 keypoints on the device.
+## 실행
 
-## Team project and verified development scope
-
-The final report identifies BPT as a three-person capstone project but does not include an individual role-allocation table. The attribution below combines Git authorship, file-level commit evidence, and the project owner's 2026-08-17 role confirmation rather than treating the entire application as one person's work.
-
-| Area | Scope in this repository | Attribution evidence |
-| --- | --- | --- |
-| Flutter product foundation | screens, Riverpod state, authentication flow, profile, reports, Firebase and local persistence | team result; history is primarily associated with `jinjeonz` and `Han-min` |
-| AI research and prototyping | pose/hand/wrist reference modules, model conversion, comparison, diagnostics, and tests | project owner's AI branch and commit `08d68c5` |
-| Native iOS AI engine | camera capture, RTMPose-s CoreML inference, SimCC decoding, coordinate transforms, five evaluators, MediaPipe hand branch | project owner commit `3394f6c` (`06-month`) |
-| Flutter-native workout integration | PlatformView registration, MethodChannel updates, preparation/countdown flow, set progression, result routing | project owner commit `3394f6c` (`06-month`) |
-| Camera preview stabilization | preview mapping and workout-screen integration fixes | project owner commit `4bc3865` (`06-month`) |
-| Exercise video capture | three-camera recordings used by the related dataset project | all three team members, confirmed by the project owner |
-| 3D dataset generation | end-to-end synchronization, camera geometry, pose, triangulation, body fitting, quality control, and export pipeline | implemented by the project owner in `Exercise3D-Dataset-Pipeline`; all 124 commits map to owner identities |
-
-The project owner's verifiable and confirmed technical scope is therefore the AI model investigation, Python evaluation tooling, CoreML conversion and post-processing, native Swift inference pipeline, exercise evaluators, Flutter-native camera integration, and the separate 3D dataset generation pipeline. Data recording is credited to the full team. General Flutter UI, Firebase, profile, and reporting features are described as team outcomes rather than individual work.
-
-Commit counts are not used as contribution weights. See [process.md](process.md) for the evidence, uncertainty labels, and documentation decisions behind this summary.
-
-## Current milestone and verification
-
-| Check | Result |
-| --- | --- |
-| Manual Xcode validation | completed by the project owner on 2026-08-17 |
-| Flutter static analysis | `flutter analyze` passed |
-| Python reference tests | 132 tests passed |
-| iOS dependency resolution | `pod install` completed with 27 pods |
-| Repository hygiene | generated builds, Pods, downloaded research weights, videos, and experiment outputs are excluded |
-
-The repository does not contain a device-by-device FPS, latency, frame-drop, or posture-accuracy benchmark. No numerical real-time or accuracy claim is made until those measurements are recorded with hardware and test conditions.
-
-## Known limitations
-
-- Real-time AI inference is implemented only for iOS; Android needs a separate CameraX and TFLite or ONNX Runtime Mobile backend.
-- Evaluation is based on 2D pose and exercise-specific thresholds, so camera angle, occlusion, body proportions, and movement speed can affect results.
-- The native result handoff is currently repetition-centric. Correct/incorrect repetition counts, posture score, and feedback history are not yet populated by the native path.
-- Hand landmarks do not yet drive wrist-bend or palm-rotation feedback.
-- The temporal 3D pose path is not active in the application.
-- User workout video recording, keypoint-overlay replay, voice feedback, social login, and administrator analytics are not implemented.
-- No project-wide license has been selected. Third-party code, model configuration, and model assets remain subject to their original licenses; review them before redistribution.
-
-## Active roadmap
-
-The project continues from the Capstone Design I milestone in this order:
-
-1. add device-level profiling for FPS, inference latency, frame drops, and thermal behavior;
-2. define exercise-specific evaluation sets and measure repetition and phase errors;
-3. connect native `status` and evaluator evidence to correct/incorrect repetitions, posture score, and feedback history;
-4. activate wrist-bend and palm-orientation feedback only where camera projection and hand confidence are valid;
-5. use the Exercise3D dataset pipeline for 3D/reference-trajectory experiments without presenting pseudo-labels as ground truth;
-6. validate temporal 3D pose, body-proportion normalization, and phase alignment before enabling them in the app;
-7. add an Android inference backend after the iOS path has measurable stability criteria;
-8. extend the product with replay, voice feedback, richer offline/error states, and additional authentication or administrator features.
-
-Each stage should keep the current boundary between completed runtime behavior, experimental branches, and future work.
-
-## Repository layout
-
-| Path | Purpose |
-| --- | --- |
-| `bpt/` | Flutter application and native iOS camera/CoreML/MediaPipe runtime |
-| `pose_feedback/` | modular Python pose, hand, wrist, and feedback reference implementation |
-| `scripts/` | conversion, benchmarking, diagnostics, and visualization commands |
-| `tests/` | Python unit and pipeline tests |
-| `tools/` | minimal Swift and Python smoke/profiling tools |
-| `docs/` | iOS integration, CoreML, research, and project documents |
-| `models/` | RTMPose configuration files and local model setup guidance |
-| `assets/` | guidance for local research inputs and generated outputs |
-| `external/` | pinned revisions for optional upstream research repositories |
-
-## Run the Flutter and iOS app
-
-### Requirements
-
-- Flutter with Dart `>=3.0.0 <4.0.0`
-- macOS, Xcode, and CocoaPods for the iOS AI runtime
-- an iPhone running iOS 15 or later; a physical device is recommended for camera and performance validation
-- Firebase configuration for the target project
-
-### Setup
+**요구 사항** — Flutter (Dart `>=3.0.0 <4.0.0`), macOS + Xcode + CocoaPods, iOS 15 이상 실기기, Firebase 프로젝트 설정
 
 ```sh
-git clone https://github.com/06-month/BPT-unified.git
-cd BPT-unified/bpt
+git clone -b dev/ai https://github.com/06-month/BPT.git
+cd BPT/bpt
 flutter pub get
-cd ios
-pod install
+cd ios && pod install
 open Runner.xcworkspace
 ```
 
-Open `Runner.xcworkspace`, not `Runner.xcodeproj`. Select a signing team and a physical iPhone, then run the `Runner` scheme. The runtime models are versioned under `bpt/ios/Runner/NativePose/Models/`.
+`Runner.xcodeproj`가 아니라 `Runner.xcworkspace`를 여세요. 서명 팀을 선택하고 실기기에서 `Runner` 스킴을 실행합니다. 런타임 모델은 `bpt/ios/Runner/NativePose/Models/`에 함께 버전 관리됩니다. Firebase 설정은 `lib/firebase_options.dart`를 대상 프로젝트에 맞게 교체하세요.
 
-Firebase initialization uses `lib/firebase_options.dart`; replace the checked-in project configuration when deploying to a different Firebase project.
-
-## Run the Python reference tests
+Python 레퍼런스 테스트:
 
 ```sh
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 pytest
 ```
 
-Downloaded research weights and upstream repositories are intentionally not vendored. See [assets/README.md](assets/README.md), [models/README.md](models/README.md), and [external/README.md](external/README.md) before running model-specific experiments.
+연구용 가중치와 upstream 저장소는 의도적으로 vendoring하지 않았습니다. 모델 실험 전에 [`assets/README.md`](assets/README.md), [`models/README.md`](models/README.md), [`external/README.md`](external/README.md)를 확인하세요.
 
-## Documentation
+## 현재 상태와 다음 단계
 
-- [Documentation plan](plan.md)
-- [Evidence and contribution review](process.md)
-- [Repository consolidation record](docs/migration.md)
-- [Native pose integration plan](docs/ios/native-pose-integration-plan.md)
-- [CoreML and research notes](docs/research/coreml.md)
-- [Project presentation](docs/project/BPT%EA%B3%84%ED%9A%8D%EB%B0%9C%ED%91%9C.pptx)
-- [Exercise3D Dataset Pipeline](https://github.com/06-month/Exercise3D-Dataset-Pipeline)
+캡스톤 디자인 I은 종료가 아니라 검증된 1차 마일스톤입니다. 지금 확인된 한계가 그대로 다음 작업 목록입니다.
 
-The 24-page Capstone Design I final report was used as a factual snapshot of the first milestone. It is not committed here because the source copy contains student identifiers. The project remains in active development after that report.
+| 한계 | 다음 단계 |
+| --- | --- |
+| 기기별 FPS·지연 시간 측정 자료 없음 | 실기기 프로파일링 (FPS, latency, frame drop, thermal) |
+| 반복·자세 판정 정확도 벤치마크 없음 | 운동별 validation clip과 기준 annotation으로 오차 측정 |
+| 네이티브 결과가 반복 수 중심 | `status`·evidence를 성공/실패 반복, 자세 점수, 피드백 히스토리에 연결 |
+| 손목 정밀 피드백 미활성 | projection validity와 hand confidence 게이트 통과 시에만 활성화 |
+| 3D temporal pose 앱 비활성 | Exercise3D 데이터로 안정성·체형 보정·phase 정렬 검증 후 판단 |
+| iOS 전용 | 측정 기준 확립 후 Android (CameraX + TFLite/ONNX Runtime) 백엔드 |
+
+2D 포즈와 운동별 임계값 기반이므로 촬영 각도, 가림, 체형, 동작 속도가 결과에 영향을 줍니다. FPS·지연 시간·정확도 수치는 측정 조건과 함께 기록되기 전까지 주장하지 않습니다.
+
+## 문서
+
+- [네이티브 포즈 CoreML 파이프라인](docs/research/coreml_rtmpose_s_motionagformer_xs_pipeline.md)
+- [RTMPose-s CoreML 변환 검토](docs/research/rtmpose_s_coreml_feasibility.md)
+- [MediaPipe Hand CoreML 검토](docs/research/mediapipe_hand_coreml_feasibility.md)
+- [iPhone CoreML 프로파일링 계획](docs/research/iphone_coreml_profiling_plan.md)
+- [Exercise3D 데이터셋 파이프라인](https://github.com/06-month/Exercise3D-Dataset-Pipeline)
+
+## 라이선스
+
+프로젝트 전체 라이선스는 아직 선택하지 않았습니다. 서드파티 코드, 모델 설정, 번들 모델 자산은 각자의 원 라이선스를 따르므로 재배포 전에 확인이 필요합니다.
