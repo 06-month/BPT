@@ -1,0 +1,70 @@
+# macOS and editor state
+.DS_Store
+**/.DS_Store
+.idea/
+.vscode/
+.claude/settings.local.json
+*.xcuserstate
+**/xcuserdata/
+
+# Python
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Flutter / Dart
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/build/
+**/.packages
+
+# iOS / CocoaPods / Xcode generated files
+**/Pods/
+**/.symlinks/
+**/DerivedData/
+**/Flutter/ephemeral/
+**/Flutter/Generated.xcconfig
+**/Flutter/flutter_export_environment.sh
+
+# Android generated/local files
+**/android/local.properties
+**/.gradle/
+
+# Research dependencies and generated artifacts
+mediapipe/
+outputs/
+assets/*
+!assets/README.md
+models/*
+!models/README.md
+!models/rtmpose/
+models/rtmpose/*
+!models/rtmpose/*.py
+external/*
+!external/README.md
+
+# Large training/export formats outside the bundled iOS runtime model folder
+*.pt
+*.pth
+*.onnx
+*.engine
+*.ckpt
+*.safetensors
+*.tflite
+*.mp4
+*.mov
+*.avi
+!bpt/ios/Runner/NativePose/Models/**
+
+# Local logs and scratch files
+*.log
+*.tmp
+*.swp
+*.bak
