@@ -14,7 +14,9 @@ from bpt.benchmarks.pose.adapters.joint_mapping import (
     h36m17_pixels_to_motion_input,
     mapping_table,
 )
-from bpt.benchmarks.pose.datasets import athletepose3d, fit3d
+from bpt.benchmarks.pose.adapters import blazepose
+from bpt.benchmarks.pose.datasets import athletepose3d, athletepose3d_images, fit3d
+from bpt.benchmarks.pose.estimators import rtmpose
 from bpt.benchmarks.pose.evaluation.metrics_2d import bbox_diagonal, bbox_from_keypoints, evaluate_2d
 from bpt.benchmarks.pose.evaluation.metrics_3d import evaluate_3d
 from bpt.benchmarks.pose.evaluation.metrics_angles import angle_degrees, evaluate_angles
@@ -470,3 +472,143 @@ def test_window_builder_can_build_only_selected_target_frames():
     every = normalization.build_pixel_windows(points)
     assert subset.shape == (len(targets), 27, 17, 2)
     assert subset == pytest.approx(every[targets])
+
+
+# --- RGB arm: RTMPose front-end -------------------------------------------
+
+
+def test_rtmpose_preprocess_produces_the_contract_tensor():
+    frame = np.zeros((1088, 1920, 3), dtype=np.uint8)
+    tensor, forward, inverse = rtmpose.preprocess_full_image(frame)
+    assert tensor.shape == (1, 3, 256, 192) and tensor.dtype == np.float32
+    assert forward.shape == (2, 3) and inverse.shape == (2, 3)
+    # A black frame normalizes to -mean/std on every channel.
+    for channel in range(3):
+        expected = -rtmpose.MEAN_RGB[channel] / rtmpose.STD_RGB[channel]
+        assert tensor[0, channel] == pytest.approx(expected, abs=1e-4)
+
+
+def test_rtmpose_affine_round_trips_between_image_and_input_space():
+    frame = np.zeros((900, 900, 3), dtype=np.uint8)
+    _, forward, inverse = rtmpose.preprocess_full_image(frame)
+    points = np.array([[450.0, 450.0], [100.0, 800.0], [700.0, 200.0]], dtype=np.float32)
+    restored = rtmpose.apply_affine(rtmpose.apply_affine(points, forward), inverse)
+    assert restored == pytest.approx(points, abs=1e-2)
+
+
+def test_simcc_decode_uses_split_ratio_and_min_score():
+    simcc_x = np.zeros((1, 17, 384), dtype=np.float32)
+    simcc_y = np.zeros((1, 17, 512), dtype=np.float32)
+    simcc_x[0, 0, 100] = 0.9
+    simcc_y[0, 0, 200] = 0.4
+    locations, scores = rtmpose.decode_simcc(simcc_x, simcc_y)
+    assert locations[0, 0] == pytest.approx([50.0, 100.0])  # split ratio 2.0
+    assert scores[0, 0] == pytest.approx(0.4)  # min(max_x, max_y)
+
+
+def test_simcc_decode_marks_non_positive_scores_invalid():
+    simcc_x = np.full((1, 17, 384), -1.0, dtype=np.float32)
+    simcc_y = np.full((1, 17, 512), -1.0, dtype=np.float32)
+    locations, scores = rtmpose.decode_simcc(simcc_x, simcc_y)
+    assert np.all(locations == -0.5)  # -1 sentinel divided by the split ratio
+    assert np.all(scores < 0)
+
+
+def test_simcc_decode_rejects_wrong_shapes():
+    with pytest.raises(ValueError):
+        rtmpose.decode_simcc(np.zeros((1, 17, 192)), np.zeros((1, 17, 512)))
+
+
+def test_rtmpose_estimator_returns_image_pixel_coco17():
+    def fake_backend(tensor):
+        assert tensor.shape == (1, 3, 256, 192)
+        simcc_x = np.zeros((1, 17, 384), dtype=np.float32)
+        simcc_y = np.zeros((1, 17, 512), dtype=np.float32)
+        simcc_x[0, :, 192] = 1.0  # centre of the 192-wide input
+        simcc_y[0, :, 256] = 1.0  # centre of the 256-tall input
+        return simcc_x, simcc_y
+
+    estimator = rtmpose.RTMPoseEstimator(backend="callable", session=fake_backend)
+    keypoints = estimator.predict(np.zeros((900, 900, 3), dtype=np.uint8))
+    assert keypoints.shape == (17, 3)
+    # Input-space centre maps back to the image centre.
+    assert keypoints[:, :2] == pytest.approx(np.full((17, 2), 450.0), abs=1.0)
+    assert np.all(keypoints[:, 2] == 1.0)
+
+
+def test_onnx_output_picking_is_by_shape_not_order():
+    x = np.zeros((1, 17, 384), dtype=np.float32)
+    y = np.zeros((1, 17, 512), dtype=np.float32)
+    picked_x, picked_y = rtmpose._pick_simcc(["out_1", "out_0"], [y, x])
+    assert picked_x.shape[-1] == 384 and picked_y.shape[-1] == 512
+    named_x, named_y = rtmpose._pick_simcc(["simcc_y", "simcc_x"], [y, x])
+    assert named_x.shape[-1] == 384 and named_y.shape[-1] == 512
+
+
+# --- RGB arm: BlazePose mapping -------------------------------------------
+
+
+def test_blazepose_maps_direct_joints_and_synthesizes_the_rest():
+    landmarks = np.zeros((33, 3))
+    landmarks[blazepose.BLAZEPOSE["left_hip"]] = [0.0, 10.0, 1.0]
+    landmarks[blazepose.BLAZEPOSE["right_hip"]] = [10.0, 10.0, 1.0]
+    landmarks[blazepose.BLAZEPOSE["left_shoulder"]] = [0.0, 0.0, 1.0]
+    landmarks[blazepose.BLAZEPOSE["right_shoulder"]] = [10.0, 0.0, 1.0]
+    landmarks[blazepose.BLAZEPOSE["right_wrist"]] = [20.0, 5.0, 0.5]
+    h36m = blazepose.blazepose33_to_h36m17(landmarks)
+    assert h36m.shape == (17, 3)
+    assert h36m[0, :2] == pytest.approx([5.0, 10.0])   # pelvis
+    assert h36m[8, :2] == pytest.approx([5.0, 0.0])    # thorax
+    assert h36m[7, :2] == pytest.approx([5.0, 5.0])    # spine
+    assert h36m[16] == pytest.approx([20.0, 5.0, 0.5])  # right wrist copied
+    assert h36m[16, 2] == pytest.approx(0.5)            # score carried through
+
+
+def test_blazepose_synthesis_matches_the_coco_adapter_rule():
+    rng = np.random.default_rng(17)
+    landmarks = rng.normal(size=(33, 3))
+    h36m = blazepose.blazepose33_to_h36m17(landmarks)
+    thorax = (landmarks[11] + landmarks[12]) / 2
+    assert h36m[9] == pytest.approx((landmarks[0] + thorax) / 2)   # neck
+    assert h36m[10] == pytest.approx((landmarks[2] + landmarks[5]) / 2)  # head
+
+
+def test_blazepose_rejects_the_wrong_joint_count():
+    with pytest.raises(ValueError):
+        blazepose.blazepose33_to_h36m17(np.zeros((17, 3)))
+
+
+# --- RGB arm: image resolution --------------------------------------------
+
+
+def test_image_root_resolution_drops_the_recorded_prefix(tmp_path):
+    (tmp_path / "valid_img").mkdir()
+    for name in ("a.jpg", "b.jpg"):
+        (tmp_path / "valid_img" / name).write_bytes(b"")
+    paths = ["pose_3d/valid_img/a.jpg", "pose_3d/valid_img/b.jpg"]
+    root, dropped = athletepose3d_images.resolve_root(tmp_path, paths)
+    assert (root, dropped) == (tmp_path, 1)
+    resolved = athletepose3d_images.frame_paths(tmp_path, paths, dropped)
+    assert resolved[0] == tmp_path / "valid_img" / "a.jpg"
+
+
+def test_missing_frames_are_reported_not_silently_dropped(tmp_path):
+    (tmp_path / "valid_img").mkdir()
+    (tmp_path / "valid_img" / "a.jpg").write_bytes(b"")
+    paths = ["pose_3d/valid_img/a.jpg", "pose_3d/valid_img/missing.jpg"]
+    resolution = athletepose3d_images.check_sequence(tmp_path, paths, 1)
+    assert (resolution.found, resolution.missing, resolution.complete) == (1, 1, False)
+
+
+def test_unresolvable_image_root_raises(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        athletepose3d_images.resolve_root(tmp_path, ["pose_3d/valid_img/a.jpg"])
+
+
+def test_normalize_windows_accepts_detector_confidence():
+    windows = np.random.default_rng(18).uniform(0, 900, size=(4, 27, 17, 2))
+    scores = np.full((4, 27, 17), 0.3)
+    inputs, _ = normalization.normalize_windows(windows, 900, 900, "full_image", confidence=scores)
+    assert inputs[..., 2] == pytest.approx(0.3)
+    with pytest.raises(ValueError):
+        normalization.normalize_windows(windows, 900, 900, "full_image", confidence=scores[:, :5])

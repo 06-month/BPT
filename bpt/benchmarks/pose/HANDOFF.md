@@ -204,6 +204,47 @@ template becomes available. Do not substitute TRAIN.
      PyTorch/Core ML parity, since the app ships Core ML.
   3. Decide the app-side normalization question raised above.
 
+## RGB benchmark on another machine (phase 4)
+
+Two arms, same frames, same joints, same metrics, both scored against
+AthletePose3D's GT 3D (`joint_3d_camera`, millimetres):
+
+| arm | pipeline |
+| --- | --- |
+| `rtmpose_motionagformer` | RGB -> RTMPose-s -> COCO17 -> H36M17 -> 27-frame lookahead-5 window -> MotionAGFormer-XS -> 3D |
+| `mediapipe_lite` | RGB -> MediaPipe Pose Landmarker lite, VIDEO running mode -> BlazePose world landmarks -> H36M17 |
+
+Runner: `scripts/run_m0_athletepose3d_rgb.py --arm <arm>`. It caches per
+sequence, reports 2D metrics (NME/PCK against GT 2D with the box diagonal as
+scale) alongside the 3D metrics, and skips any sequence whose frames are not
+all present rather than scoring a partial one.
+
+Fairness rules already encoded, do not "fix" them:
+
+- Both arms synthesize H36M17's pelvis/spine/thorax/neck/head with the same
+  averaging rule, so the synthesis error is charged to both
+  (`adapters/blazepose.py` mirrors the COCO17 adapter).
+- MediaPipe must run in VIDEO mode with strictly increasing timestamps; that
+  is its temporal counterpart to our 27-frame window.
+- The RTMPose arm keeps the full-image bbox policy and feeds real per-joint
+  confidence into the lifter's third channel.
+- MediaPipe world landmarks are metres about the hip midpoint; they are
+  converted to millimetres and then scored root-relative, exactly like ours.
+
+### Linux/CUDA notes
+
+RTMPose ships here as a Core ML package, which macOS-only. On Linux export the
+same forward-only module to ONNX and run it through the same estimator:
+
+```sh
+python scripts/setup_rtmpose_s_model.py
+PYTHONPATH=. python3 scripts/export_rtmpose_s_onnx.py --out models/rtmpose_s_forward.onnx
+```
+
+That script verifies the export against the PyTorch trace and against the
+SimCC contract (`simcc_x [1,17,384]`, `simcc_y [1,17,512]`) before writing a
+pass. Extra dependencies are in `requirements-benchmark-linux.txt`.
+
 ## Sources audited
 
 - Fit3D project: https://fit3d.imar.ro/fit3d

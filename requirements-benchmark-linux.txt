@@ -1,0 +1,13 @@
+# Extra dependencies for the M0 RGB benchmark on a Linux/CUDA machine.
+# Install on top of the project's requirements.txt.
+#
+#   pip install -r requirements.txt -r requirements-benchmark-linux.txt
+#
+# torch: install the CUDA build for the machine's driver first, e.g.
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
+onnxruntime-gpu>=1.18
+mediapipe>=0.10.21
+timm>=1.0
+easydict
+gdown
+opencv-python

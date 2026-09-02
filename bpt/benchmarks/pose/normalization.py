@@ -51,8 +51,19 @@ def build_pixel_windows(
     return points[indices]
 
 
-def normalize_windows(windows: np.ndarray, width: int, height: int, mode: str):
-    """Return normalized ``[N,T,17,3]`` inputs and their denormalization terms."""
+def normalize_windows(
+    windows: np.ndarray,
+    width: int,
+    height: int,
+    mode: str,
+    confidence: np.ndarray | None = None,
+):
+    """Return normalized ``[N,T,17,3]`` inputs and their denormalization terms.
+
+    ``confidence`` fills the third channel; it defaults to 1.0, which is what
+    the ground-truth oracle uses. A detector-driven run should pass the real
+    per-joint scores instead.
+    """
 
     if mode not in MODES:
         raise ValueError(f"unknown normalization mode: {mode}")
@@ -72,8 +83,14 @@ def normalize_windows(windows: np.ndarray, width: int, height: int, mode: str):
     normalized -= bias[:, None, None, :]
     if mode == "person_crop":
         normalized = np.clip(normalized, -1.0, 1.0)
-    confidence = np.ones((*normalized.shape[:-1], 1))
-    inputs = np.concatenate((normalized, confidence), axis=-1).astype(np.float32)
+    if confidence is None:
+        scores = np.ones((*normalized.shape[:-1], 1))
+    else:
+        scores = np.asarray(confidence, dtype=np.float64)
+        if scores.shape != normalized.shape[:-1]:
+            raise ValueError(f"confidence {scores.shape} does not match windows {normalized.shape[:-1]}")
+        scores = scores[..., None]
+    inputs = np.concatenate((normalized, scores), axis=-1).astype(np.float32)
     return inputs, {"scale": scale, "bias": bias, "origin": origin, "mode": mode}
 
 
