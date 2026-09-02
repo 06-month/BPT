@@ -1,0 +1,61 @@
+baseline:
+  id: M0
+  name: RTMPose-s + MotionAGFormer-XS
+  seed: 20260902
+
+rtmpose:
+  backend: coreml
+  model: bpt/ios/Runner/NativePose/Models/rtmpose_s_forward.mlpackage
+  input_name: input_image
+  outputs: [simcc_x, simcc_y]
+  input_size: [192, 256]
+  preprocessing: full_image_affine
+  bbox_scale_factor: 1.25
+  simcc_split_ratio: 2.0
+  dark: false
+  sub_bin_interpolation: false
+  flip_test: false
+
+motionagformer:
+  backend: auto
+  coreml_model: assets/coreml/motionagformer_xs.mlpackage
+  repository: external/MotionAGFormer
+  config: external/MotionAGFormer/configs/h36m/MotionAGFormer-xsmall.yaml
+  checkpoint: external/MotionAGFormer/checkpoint/motionagformer-xs-h36m.pth.tr
+  input_name: input_2d_sequence
+  output_name: pred_3d_sequence
+  window_size: 27
+  lookahead: 5
+  target_index: 21
+  boundary_padding: edge
+
+evaluation:
+  split:
+    fit3d: test
+    athletepose3d: valid
+  primary_2d_joints:
+    - left_shoulder
+    - right_shoulder
+    - left_elbow
+    - right_elbow
+    - left_wrist
+    - right_wrist
+    - left_hip
+    - right_hip
+    - left_knee
+    - right_knee
+    - left_ankle
+    - right_ankle
+  primary_3d_joints: h36m17
+  secondary_3d_joints: direct_body12
+  nme_scale: gt_bbox_diagonal
+  pck_thresholds: [0.05, 0.10, 0.20]
+  pck_auc_max_threshold: 0.20
+  root_joint: pelvis
+  alignments: [root_relative, scale, procrustes]
+  contexts: [full_real_context, all_frames]
+
+cache:
+  format: npz_json
+  resume: true
+  version: 1
