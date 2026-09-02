@@ -1,141 +1,85 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../models/user_model.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/local_storage_service.dart';
 
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
 
-// ── Auth ───────────────────────────────────────────────────────────────────
+// ── Auth Notifier (Spring Boot REST API + Offline Dev Fallback) ──────────────
 class AuthNotifier extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final AuthService _authService = AuthService();
+  final AuthService _authService;
+  final LocalStorageService _storage;
 
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _error;
+  bool _isOfflineMode = false;
+
+  AuthNotifier(this._authService, this._storage);
 
   UserModel? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get isOfflineMode => _isOfflineMode;
 
-  // ── 로컬 캐시 (SharedPreferences, UID별 격리) ────────────────────────────
-  static String _cacheKey(String uid) => 'bpt_user_cache_$uid';
-
-  Future<void> _cacheUser(UserModel user) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_cacheKey(user.id), user.toJsonString());
-  }
-
-  Future<UserModel?> _loadCachedUser(String uid) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_cacheKey(uid));
-      if (raw == null) return null;
-      return UserModel.fromJsonString(raw);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  // ── Firestore 조회 ────────────────────────────────────────────────────────
-  Future<UserModel?> _loadFromFirestore(User user) async {
-    try {
-      await user.getIdToken(true);
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      if (!doc.exists || doc.data() == null) return null;
-      final data = doc.data()!;
-      return UserModel(
-        id: user.uid,
-        username: data['username'] as String? ?? user.email ?? '',
-        name: data['name'] as String? ?? user.displayName ?? '',
-        email: data['email'] as String? ?? user.email ?? '',
-        password: '',
-        avatarInitials: data['avatarInitials'] as String? ??
-            (user.displayName?.isNotEmpty == true
-                ? user.displayName![0].toUpperCase()
-                : 'U'),
-        birthDate: data['birthDate'] != null
-            ? DateTime.tryParse(data['birthDate'].toString())
-            : null,
-        weightKg: (data['weightKg'] as num?)?.toDouble() ?? 0.0,
-        heightCm: (data['heightCm'] as num?)?.toDouble() ?? 0.0,
-        gender: data['gender'] as String?,
-        workoutGoal: data['workoutGoal'] as String?,
-        joinedAt: data['joinedAt'] != null
-            ? (DateTime.tryParse(data['joinedAt'].toString()) ?? DateTime.now())
-            : DateTime.now(),
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  UserModel _fallbackUser(User user) {
-    final initials = (user.displayName?.isNotEmpty == true)
-        ? user.displayName![0].toUpperCase()
-        : 'U';
-    return UserModel(
-      id: user.uid,
-      username: user.email ?? '',
-      name: user.displayName ?? '',
-      email: user.email ?? '',
-      password: '',
-      avatarInitials: initials,
-      joinedAt: DateTime.now(),
-    );
-  }
-
-  /// Firebase는 세션을 자동 유지 — currentUser가 있으면 복원
+  /// Try restoring user session from local storage or fetching from Spring Boot API
   Future<bool> tryAutoLogin() async {
-    final user = _auth.currentUser;
-    if (user == null) return false;
-    final fromFirestore = await _loadFromFirestore(user);
-    if (fromFirestore != null) {
-      _currentUser = fromFirestore;
-      await _cacheUser(fromFirestore); // Firestore 최신값으로 캐시 갱신
-    } else {
-      final fromCache = await _loadCachedUser(user.uid);
-      _currentUser = fromCache ?? _fallbackUser(user);
-      if (fromCache != null) _syncToFirestore(fromCache);
+    final cachedUser = _storage.loadUser();
+    final autoLogin = _storage.loadAutoLogin();
+
+    if (cachedUser == null || !autoLogin) {
+      return false;
     }
+
+    _currentUser = cachedUser;
     notifyListeners();
+
+    // Try background refresh from Spring Boot server
+    try {
+      final freshUser = await _authService.fetchUserProfile();
+      _currentUser = freshUser;
+      await _storage.saveUser(freshUser);
+      _isOfflineMode = false;
+      notifyListeners();
+    } catch (_) {
+      // Offline fallback: continue with cached user profile
+      _isOfflineMode = true;
+    }
+
     return true;
   }
 
-  Future<void> login(String email, String password,
-      {bool rememberMe = false}) async {
+  /// Login via Spring Boot REST API (Falls back to offline local user if server is unreachable)
+  Future<void> login(
+    String email,
+    String password, {
+    bool rememberMe = false,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-      final u = credential.user!;
-      final fromFirestore = await _loadFromFirestore(u);
-      if (fromFirestore != null) {
-        _currentUser = fromFirestore;
-        await _cacheUser(fromFirestore); // Firestore 최신값으로 캐시 갱신
-      } else {
-        final fromCache = await _loadCachedUser(u.uid);
-        _currentUser = fromCache ?? _fallbackUser(u);
-        // 캐시에 신체 정보가 있는데 Firestore에 없으면 동기화
-        if (fromCache != null) _syncToFirestore(fromCache);
-      }
+      final user = await _authService.login(email: email, password: password);
+      _currentUser = user;
+      await _storage.saveUser(user);
+      await _storage.saveAutoLogin(rememberMe);
+      _isOfflineMode = false;
       _error = null;
-    } on FirebaseAuthException catch (e) {
-      _error = _mapFirebaseError(e.code);
-    } catch (_) {
+    } on NetworkException {
+      // Spring Boot backend not running or unreachable -> Fallback to Offline Local Login
+      _currentUser = _createLocalFallbackUser(email: email);
+      await _storage.saveUser(_currentUser!);
+      await _storage.saveAutoLogin(rememberMe);
+      _isOfflineMode = true;
+      _error = null;
+    } on ApiException catch (e) {
+      _error = _mapApiError(e);
+    } catch (e) {
       _error = 'unknown_error';
     }
 
@@ -143,6 +87,7 @@ class AuthNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sign up via Spring Boot REST API (Falls back to offline local user if server is unreachable)
   Future<void> signUp({
     required String email,
     required String password,
@@ -158,52 +103,39 @@ class AuthNotifier extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Firebase Auth 계정 생성
-      final credential = await _auth.createUserWithEmailAndPassword(
-        email: email.trim(),
+      final user = await _authService.signUp(
+        email: email,
         password: password,
-      );
-      final user = credential.user!;
-      await user.updateDisplayName(name);
-
-      // 2. 즉시 _currentUser 설정 + 로컬 캐시 저장
-      //    Firestore 저장 실패와 무관하게 로그인 상태 유지
-      final initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
-      _currentUser = UserModel(
-        id: user.uid,
-        username: email.trim(),
         name: name,
-        email: email.trim(),
-        password: '',
-        avatarInitials: initials,
         birthDate: birthDate,
-        heightCm: heightCm ?? 0,
-        weightKg: weightKg ?? 0,
         gender: gender,
+        heightCm: heightCm,
+        weightKg: weightKg,
         workoutGoal: workoutGoal,
-        joinedAt: DateTime.now(),
       );
-      await _cacheUser(_currentUser!);
 
-      // 3. Firestore 저장 — 실패해도 로그인은 유지됨
-      try {
-        await _authService.saveUserData(
-          uid: user.uid,
-          name: name,
-          email: email.trim(),
-          birthDate: birthDate,
-          weight: weightKg,
-          height: heightCm,
-          gender: gender,
-          goal: workoutGoal,
-        );
-      } catch (_) {
-        // 로컬 캐시에 저장되어 있으므로 재로그인 시 Firestore로 자동 동기화
-      }
-
+      _currentUser = user;
+      await _storage.saveUser(user);
+      await _storage.saveAutoLogin(true);
+      _isOfflineMode = false;
       _error = null;
-    } on FirebaseAuthException catch (e) {
-      _error = _mapFirebaseError(e.code);
+    } on NetworkException {
+      // Spring Boot backend not running or unreachable -> Fallback to Offline Local Sign Up
+      _currentUser = _createLocalFallbackUser(
+        email: email,
+        name: name,
+        birthDate: birthDate,
+        gender: gender,
+        heightCm: heightCm,
+        weightKg: weightKg,
+        workoutGoal: workoutGoal,
+      );
+      await _storage.saveUser(_currentUser!);
+      await _storage.saveAutoLogin(true);
+      _isOfflineMode = true;
+      _error = null;
+    } on ApiException catch (e) {
+      _error = _mapApiError(e);
     } catch (e) {
       _error = 'unknown_error';
     }
@@ -212,35 +144,54 @@ class AuthNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 캐시 데이터를 Firestore에 동기화 (fire-and-forget)
-  Future<void> _syncToFirestore(UserModel user) async {
-    try {
-      await _authService.saveUserData(
-        uid: user.id,
-        name: user.name,
-        email: user.email,
-        birthDate: user.birthDate,
-        weight: user.weightKg,
-        height: user.heightCm,
-        gender: user.gender,
-        goal: user.workoutGoal,
-      );
-    } catch (_) {
-      // 다음 로그인 시 재시도
-    }
+  UserModel _createLocalFallbackUser({
+    required String email,
+    String? name,
+    DateTime? birthDate,
+    String? gender,
+    double? heightCm,
+    double? weightKg,
+    String? workoutGoal,
+  }) {
+    final effectiveName = (name != null && name.isNotEmpty)
+        ? name
+        : (email.contains('@') ? email.split('@')[0] : email);
+    final initials = effectiveName.isNotEmpty ? effectiveName[0].toUpperCase() : 'U';
+
+    return UserModel(
+      id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+      username: email.trim(),
+      name: effectiveName,
+      email: email.trim(),
+      password: '',
+      avatarInitials: initials,
+      birthDate: birthDate,
+      gender: gender,
+      heightCm: heightCm ?? 175,
+      weightKg: weightKg ?? 70,
+      workoutGoal: workoutGoal,
+      joinedAt: DateTime.now(),
+    );
   }
 
+  /// Update profile data
   Future<void> updateProfile(UserModel updated) async {
-    await _auth.currentUser?.updateDisplayName(updated.name);
+    try {
+      await _authService.saveUserData(updated);
+    } catch (_) {
+      // Saved locally if offline
+    }
     _currentUser = updated;
-    await _cacheUser(updated);
+    await _storage.saveUser(updated);
     notifyListeners();
   }
 
+  /// Logout
   Future<void> logout() async {
-    await _auth.signOut();
+    await _storage.clearSession();
     _currentUser = null;
     _error = null;
+    _isOfflineMode = false;
     notifyListeners();
   }
 
@@ -249,26 +200,22 @@ class AuthNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
-  String _mapFirebaseError(String code) {
-    switch (code) {
-      case 'email-already-in-use':
-        return 'username_already_exists';
-      case 'user-not-found':
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'username_or_password_incorrect';
-      case 'weak-password':
-        return 'password_too_weak';
-      case 'invalid-email':
-        return 'invalid_email';
-      default:
-        return 'unknown_error';
+  String _mapApiError(ApiException exception) {
+    if (exception is NetworkException) {
+      return 'network_error';
+    } else if (exception is UnauthorizedException) {
+      return 'username_or_password_incorrect';
+    } else if (exception.statusCode == 409) {
+      return 'username_already_exists';
     }
+    return 'unknown_error';
   }
 }
 
-final authNotifierProvider = ChangeNotifierProvider<AuthNotifier>(
-  (ref) => AuthNotifier(),
-);
+final authNotifierProvider = ChangeNotifierProvider<AuthNotifier>((ref) {
+  final authService = ref.watch(authServiceProvider);
+  final storage = ref.watch(localStorageServiceProvider);
+  return AuthNotifier(authService, storage);
+});
 
 final autoLoginProvider = StateProvider<bool>((ref) => false);

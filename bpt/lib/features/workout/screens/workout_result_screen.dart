@@ -6,7 +6,9 @@ import 'package:video_player/video_player.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/dto/workout_metadata_dto.dart';
 import '../../../models/workout_record_model.dart';
+import '../../../services/sync_service.dart';
 import '../../../services/workout_records_service.dart';
 import '../providers/workout_provider.dart';
 
@@ -28,6 +30,7 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
   VideoPlayerController? _vpCtrl;
   bool _vpReady = false;
   bool _showReplay = false;
+  WorkoutRecordModel? _savedRecord;
 
   @override
   void initState() {
@@ -52,24 +55,33 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
     });
   }
 
-  void _saveRecord() {
+  /// Transmits strictly lightweight On-Device AI Metadata to Spring Boot
+  Future<void> _saveRecord() async {
     final r = widget.result;
-    final record = WorkoutRecordModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      exerciseId: r['exerciseId'] as String? ?? '',
-      exerciseName: r['exerciseName'] as String? ?? '',
+    final dto = WorkoutMetadataRequestDto(
+      clientRecordId: DateTime.now().millisecondsSinceEpoch.toString(),
+      exerciseId: r['exerciseId'] as String? ?? 'squat',
+      exerciseName: r['exerciseName'] as String? ?? 'Squat',
       date: DateTime.now(),
       totalReps: r['totalReps'] as int? ?? 0,
       correctReps: r['correctReps'] as int? ?? 0,
       incorrectReps: r['incorrectReps'] as int? ?? 0,
       durationSeconds: r['elapsedSeconds'] as int? ?? 0,
       postureScore: (r['postureScore'] as num?)?.toDouble() ?? 0.0,
-      feedbackNotes:
-          (r['feedbackHistory'] as List?)?.cast<String>() ?? [],
+      feedbackNotes: (r['feedbackHistory'] as List?)?.cast<String>() ?? [],
       targetReps: r['targetReps'] as int? ?? 0,
       targetSets: r['targetSets'] as int? ?? 1,
     );
-    ref.read(workoutRecordsProvider.notifier).addRecord(record);
+
+    final record = await ref
+        .read(workoutRecordsProvider.notifier)
+        .addMetadataRecord(dto);
+
+    if (mounted && record != null) {
+      setState(() {
+        _savedRecord = record;
+      });
+    }
   }
 
   void _initVideoPlayer() {
@@ -92,6 +104,7 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
+    final syncStateAsync = ref.watch(workoutSyncProvider);
     final r = widget.result;
 
     final isHistory = r['isHistory'] as bool? ?? false;
@@ -103,10 +116,11 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
     final correctReps = r['correctReps'] as int? ?? 0;
     final incorrectReps = r['incorrectReps'] as int? ?? 0;
     final elapsedSec = r['elapsedSeconds'] as int? ?? 0;
-    final score = r['postureScore'] as double? ?? 0.0;
-    final feedbacks =
-        (r['feedbackHistory'] as List?)?.cast<String>() ?? [];
+    final score = _savedRecord?.postureScore ?? ((r['postureScore'] as num?)?.toDouble() ?? 0.0);
+    final feedbacks = (r['feedbackHistory'] as List?)?.cast<String>() ?? [];
     final targetReps = r['targetReps'] as int? ?? 0;
+
+    final isSynced = _savedRecord?.isSynced ?? false;
 
     final accuracy =
         totalReps == 0 ? 0 : ((correctReps / totalReps) * 100).round();
@@ -156,6 +170,14 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
           opacity: _fadeAnim,
           child: Column(
             children: [
+              // ── Sync Badge Indicator ──────────────────────────────────
+              _SyncStatusBadge(
+                isHistory: isHistory,
+                isSynced: isSynced,
+                syncStateAsync: syncStateAsync,
+              ),
+              const SizedBox(height: 12),
+
               ScaleTransition(
                 scale: _scaleAnim,
                 child: _ScoreCard(
@@ -240,6 +262,70 @@ class _WorkoutResultScreenState extends ConsumerState<WorkoutResultScreen>
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Sync Status Badge Widget ───────────────────────────────────────────────
+class _SyncStatusBadge extends StatelessWidget {
+  const _SyncStatusBadge({
+    required this.isHistory,
+    required this.isSynced,
+    required this.syncStateAsync,
+  });
+
+  final bool isHistory;
+  final bool isSynced;
+  final AsyncValue<SyncState> syncStateAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isHistory) return const SizedBox.shrink();
+
+    return syncStateAsync.when(
+      data: (syncState) {
+        final synced = isSynced || syncState.pendingCount == 0;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: synced
+                ? AppColors.success.withValues(alpha: 0.1)
+                : AppColors.warning.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: synced ? AppColors.success : AppColors.warning,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                synced ? Icons.cloud_done_rounded : Icons.cloud_queue_rounded,
+                size: 16,
+                color: synced ? AppColors.success : AppColors.warning,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                synced
+                    ? 'Synced to Spring Boot Server (On-Device Metadata)'
+                    : 'Saved Offline (Pending Sync Queue: ${syncState.pendingCount})',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: synced ? AppColors.success : AppColors.warning,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }

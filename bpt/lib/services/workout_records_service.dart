@@ -1,42 +1,70 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../features/auth/providers/auth_provider.dart';
+import '../data/dto/workout_metadata_dto.dart';
+import '../data/repositories/workout_repository.dart';
 import '../models/workout_record_model.dart';
-import 'local_storage_service.dart';
 
+/// Riverpod StateNotifier managing Workout Record history using AsyncValue
 class WorkoutRecordsNotifier
-    extends StateNotifier<List<WorkoutRecordModel>> {
-  final LocalStorageService _storage;
-  final String? _uid;
+    extends StateNotifier<AsyncValue<List<WorkoutRecordModel>>> {
+  final IWorkoutRepository _repository;
 
-  WorkoutRecordsNotifier(this._storage, this._uid)
-      : super(_storage.loadRecords(uid: _uid));
-
-  Future<void> addRecord(WorkoutRecordModel record) async {
-    await _storage.addRecord(record, uid: _uid);
-    state = [record, ...state];
+  WorkoutRecordsNotifier(this._repository)
+      : super(const AsyncValue.loading()) {
+    loadRecords();
   }
 
-  /// Returns the number of consecutive days (ending today or yesterday)
-  /// that had at least one workout.
+  /// Fetch records from Repository (Spring Boot API + Local Cache fallback)
+  Future<void> loadRecords() async {
+    state = const AsyncValue.loading();
+    try {
+      final records = await _repository.getWorkoutRecords();
+      state = AsyncValue.data(records);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  /// Submits On-Device AI metadata (Lightweight JSON with postureScore)
+  /// Updates Riverpod AsyncValue state safely after API / Offline completion.
+  Future<WorkoutRecordModel?> addMetadataRecord(
+    WorkoutMetadataRequestDto dto,
+  ) async {
+    try {
+      final newRecord = await _repository.submitWorkoutRecord(dto);
+
+      final currentRecords = state.value ?? [];
+      final updatedList = [
+        newRecord,
+        ...currentRecords.where((r) => r.id != newRecord.id),
+      ];
+
+      state = AsyncValue.data(updatedList);
+      return newRecord;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return null;
+    }
+  }
+
+  /// Returns active streak days based on current records
   int get streakDays {
-    if (state.isEmpty) return 0;
+    final list = state.value ?? [];
+    if (list.isEmpty) return 0;
 
     final today = _dateOnly(DateTime.now());
-    final uniqueDays = state
+    final uniqueDays = list
         .map((r) => _dateOnly(r.date))
         .toSet()
         .toList()
       ..sort((a, b) => b.compareTo(a));
 
-    // Streak must include today or yesterday to be active.
     final diff = today.difference(uniqueDays.first).inDays;
     if (diff > 1) return 0;
 
     int streak = 1;
     for (int i = 1; i < uniqueDays.length; i++) {
-      final expected =
-          uniqueDays[i - 1].subtract(const Duration(days: 1));
+      final expected = uniqueDays[i - 1].subtract(const Duration(days: 1));
       if (uniqueDays[i] == expected) {
         streak++;
       } else {
@@ -46,15 +74,13 @@ class WorkoutRecordsNotifier
     return streak;
   }
 
-  DateTime _dateOnly(DateTime dt) =>
-      DateTime(dt.year, dt.month, dt.day);
+  DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 }
 
 final workoutRecordsProvider = StateNotifierProvider<
-    WorkoutRecordsNotifier, List<WorkoutRecordModel>>(
+    WorkoutRecordsNotifier, AsyncValue<List<WorkoutRecordModel>>>(
   (ref) {
-    final storage = ref.watch(localStorageServiceProvider);
-    final uid = ref.watch(authNotifierProvider).currentUser?.id;
-    return WorkoutRecordsNotifier(storage, uid);
+    final repository = ref.watch(workoutRepositoryProvider);
+    return WorkoutRecordsNotifier(repository);
   },
 );
