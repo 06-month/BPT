@@ -1,12 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 340" width="850" height="340" role="img" aria-label="BPT 온디바이스 포즈 파이프라인: 캡처, 추론, 판정, 제품 4단계">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1070 372" width="1070" height="372" role="img" aria-label="BPT 온디바이스 포즈 파이프라인: 캡처, 2D 추론, 3D 리프팅, 판정, 제품 5단계">
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
       <path d="M0 0 L10 5 L0 10 z" fill="#17C3A2"/>
     </marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="rgba(127,127,127,.6)"/>
+    </marker>
     <style>
       .lane  { fill: rgba(127,127,127,.07); stroke: rgba(127,127,127,.28); stroke-width: 1; rx: 14; }
+      .lane.d { stroke-dasharray: 6 5; }
       .head  { font: 700 12px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
                fill: #17C3A2; letter-spacing: .04em; }
+      .head.d { fill: #8b949e; }
       .box   { fill: rgba(23,195,162,.11); stroke: #17C3A2; stroke-width: 1.4; rx: 9; }
       .box.d { fill: rgba(127,127,127,.06); stroke: rgba(127,127,127,.5); stroke-dasharray: 5 4; }
       .t     { font: 600 13px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
@@ -14,6 +19,7 @@
       .s     { font: 400 10.5px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
                fill: #8b949e; text-anchor: middle; }
       .arrow { stroke: #17C3A2; stroke-width: 1.6; fill: none; marker-end: url(#a); }
+      .arrow.d { stroke: rgba(127,127,127,.6); stroke-dasharray: 5 4; marker-end: url(#b); }
       .note  { font: 400 11.5px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
                fill: #8b949e; }
     </style>
@@ -32,12 +38,12 @@
 
   <path class="arrow" d="M198 166 H 218"/>
 
-  <!-- 2. 추론 -->
-  <text class="head" x="236" y="38">02 · 추론 — CoreML</text>
+  <!-- 2. 2D 추론 -->
+  <text class="head" x="236" y="38">02 · 2D 추론 — CoreML</text>
   <rect class="lane" x="224" y="48" width="186" height="236"/>
   <rect class="box" x="236" y="62" width="162" height="52"/>
   <text class="t" x="317" y="85">RTMPose-s</text>
-  <text class="s" x="317" y="101">Neural Engine 실행</text>
+  <text class="s" x="317" y="101">simcc_x · simcc_y</text>
   <path class="arrow" d="M317 118 V 134"/>
   <rect class="box" x="236" y="140" width="162" height="52"/>
   <text class="t" x="317" y="163">SimCC 디코딩</text>
@@ -47,36 +53,59 @@
   <text class="t" x="317" y="241">좌표 복원</text>
   <text class="s" x="317" y="257">역 affine · 프리뷰 · 미러</text>
 
-  <path class="arrow" d="M414 166 H 434"/>
+  <path class="arrow d" d="M414 166 H 434"/>
 
-  <!-- 3. 판정 -->
-  <text class="head" x="452" y="38">03 · 판정 — Swift</text>
-  <rect class="lane" x="440" y="48" width="186" height="236"/>
-  <rect class="box" x="452" y="82" width="162" height="52"/>
-  <text class="t" x="533" y="105">운동 평가기 5종</text>
-  <text class="s" x="533" y="121">phase 상태 · 연속 프레임 게이트</text>
-  <path class="arrow" d="M533 138 V 158"/>
-  <rect class="box d" x="452" y="164" width="162" height="52"/>
-  <text class="t" x="533" y="187">MediaPipe Hands</text>
-  <text class="s" x="533" y="203">보조 — 손목 정렬 신호</text>
+  <!-- 3. 3D 리프팅 -->
+  <text class="head d" x="452" y="38">03 · 3D 리프팅 — CoreML</text>
+  <rect class="lane d" x="440" y="48" width="186" height="236"/>
+  <rect class="box d" x="452" y="62" width="162" height="52"/>
+  <text class="t" x="533" y="85">COCO17 → H36M17</text>
+  <text class="s" x="533" y="101">screen normalization</text>
+  <path class="arrow d" d="M533 118 V 134"/>
+  <rect class="box d" x="452" y="140" width="162" height="52"/>
+  <text class="t" x="533" y="163">27프레임 윈도우</text>
+  <text class="s" x="533" y="179">lookahead 5 · [1,27,17,3]</text>
+  <path class="arrow d" d="M533 196 V 212"/>
+  <rect class="box d" x="452" y="218" width="162" height="52"/>
+  <text class="t" x="533" y="241">MotionAGFormer-XS</text>
+  <text class="s" x="533" y="257">t−5 프레임 H36M17 3D</text>
 
-  <path class="arrow" d="M630 166 H 650"/>
+  <path class="arrow d" d="M630 166 H 650"/>
 
-  <!-- 4. 제품 -->
-  <text class="head" x="668" y="38">04 · 제품 — Flutter</text>
+  <!-- 02 → 04 현재 앱 경로 -->
+  <path class="arrow" d="M410 276 C 470 316, 596 316, 656 276"/>
+  <text class="s" x="533" y="326">현재 앱 경로 — 2D 직결</text>
+
+  <!-- 4. 판정 -->
+  <text class="head" x="668" y="38">04 · 판정 — Swift</text>
   <rect class="lane" x="656" y="48" width="186" height="236"/>
-  <rect class="box" x="668" y="62" width="162" height="52"/>
-  <text class="t" x="749" y="85">MethodChannel</text>
-  <text class="s" x="749" y="101">rep · status · done</text>
-  <path class="arrow" d="M749 118 V 134"/>
-  <rect class="box" x="668" y="140" width="162" height="52"/>
-  <text class="t" x="749" y="163">운동 HUD</text>
-  <text class="s" x="749" y="179">세트 · 반복 진행</text>
-  <path class="arrow" d="M749 196 V 212"/>
-  <rect class="box" x="668" y="218" width="162" height="52"/>
-  <text class="t" x="749" y="241">결과 기록</text>
-  <text class="s" x="749" y="257">Firestore · 로컬 fallback</text>
+  <rect class="box" x="668" y="82" width="162" height="52"/>
+  <text class="t" x="749" y="105">운동 평가기 5종</text>
+  <text class="s" x="749" y="121">phase 상태 · 연속 프레임 게이트</text>
+  <path class="arrow" d="M749 138 V 158"/>
+  <rect class="box d" x="668" y="164" width="162" height="52"/>
+  <text class="t" x="749" y="187">MediaPipe Hands</text>
+  <text class="s" x="749" y="203">보조 — 손목 정렬 신호</text>
 
-  <circle cx="14" cy="313" r="4" fill="#17C3A2"/>
-  <text class="note" x="26" y="317">01–03은 전부 기기 안에서 실행됩니다. 카메라 프레임은 네트워크로 나가지 않고, 04 단계의 운동 결과만 저장됩니다.</text>
+  <path class="arrow" d="M846 166 H 866"/>
+
+  <!-- 5. 제품 -->
+  <text class="head" x="884" y="38">05 · 제품 — Flutter</text>
+  <rect class="lane" x="872" y="48" width="186" height="236"/>
+  <rect class="box" x="884" y="62" width="162" height="52"/>
+  <text class="t" x="965" y="85">MethodChannel</text>
+  <text class="s" x="965" y="101">rep · status · done</text>
+  <path class="arrow" d="M965 118 V 134"/>
+  <rect class="box" x="884" y="140" width="162" height="52"/>
+  <text class="t" x="965" y="163">운동 HUD</text>
+  <text class="s" x="965" y="179">세트 · 반복 진행</text>
+  <path class="arrow" d="M965 196 V 212"/>
+  <rect class="box" x="884" y="218" width="162" height="52"/>
+  <text class="t" x="965" y="241">결과 기록</text>
+  <text class="s" x="965" y="257">Firestore · 로컬 fallback</text>
+
+  <circle cx="14" cy="349" r="4" fill="#17C3A2"/>
+  <text class="note" x="26" y="353">01–04은 전부 기기 안에서 실행됩니다. 카메라 프레임은 네트워크로 나가지 않고, 05 단계의 운동 결과만 저장됩니다.</text>
+  <circle cx="14" cy="367" r="4" fill="none" stroke="rgba(127,127,127,.6)" stroke-width="1.4" stroke-dasharray="2 2"/>
+  <text class="note" x="26" y="371">점선 = 오프라인 검증까지 완료, 앱 런타임에는 아직 미연결 — 03 3D 리프팅과 MediaPipe Hands 보조 branch.</text>
 </svg>
