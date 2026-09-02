@@ -207,7 +207,7 @@ def main():
         cached = cache.load(cache_dir, arrays["key"], expect)
         if cached is None:
             elapsed = time.time()
-            windows = build_pixel_windows(arrays["joints_2d"])[targets]
+            windows = build_pixel_windows(arrays["joints_2d"], targets=targets)
             inputs, terms = normalize_windows(windows, arrays["width"], arrays["height"], args.normalization)
             normalized = predict_targets(runner, inputs, args.batch, flip=args.flip)
             prediction = denormalize_targets(normalized, terms) / ratio[targets, None, None]

@@ -461,3 +461,12 @@ def test_flip_is_an_involution_that_swaps_left_and_right():
 def test_unknown_normalization_mode_is_rejected():
     with pytest.raises(ValueError):
         normalization.normalize_windows(np.zeros((1, 27, 17, 2)), 900, 900, "bbox_square")
+
+
+def test_window_builder_can_build_only_selected_target_frames():
+    points = np.random.default_rng(16).uniform(0, 900, size=(50, 17, 2))
+    targets = np.arange(0, 50, 10)
+    subset = normalization.build_pixel_windows(points, targets=targets)
+    every = normalization.build_pixel_windows(points)
+    assert subset.shape == (len(targets), 27, 17, 2)
+    assert subset == pytest.approx(every[targets])

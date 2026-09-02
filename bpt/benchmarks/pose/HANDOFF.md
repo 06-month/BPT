@@ -1,6 +1,6 @@
 # M0 Pose Benchmark Handoff
 
-Updated: 2026-09-02 (Asia/Seoul)
+Updated: 2026-09-02 (Asia/Seoul), phase 3 in progress
 
 ## Resume prompt
 
@@ -90,13 +90,112 @@ Updated: 2026-09-02 (Asia/Seoul)
   dataset inference: 1-2 hours. Total initial estimate: 4-8 hours, excluding
   external Fit3D server turnaround and RGB storage acquisition.
 
+## Environment restored on 2026-09-02
+
+- `external/MotionAGFormer` cloned and checked out at the pinned revision
+  `4756fd1eb7cc73f0e991f091ff2280e030ab85f3`.
+- Official XS H36M checkpoint restored to
+  `external/MotionAGFormer/checkpoint/motionagformer-xs-h36m.pth.tr`
+  (27.8MB, Google Drive `1Pab7cPvnWG8NOVd0nnL1iqAfYCUY4hDH`).
+  `scripts/check_motionagformer_xs_assets.py` reports
+  `ready_for_xs_inference: true`.
+- The active interpreter is Python 3.13 (miniconda) with torch 2.9 and numpy
+  2.3.4. `timm==0.6.11` from `requirements.txt` cannot import on Python 3.13
+  (mutable dataclass default in `maxxvit`); timm 1.0.29 works and still
+  exposes `timm.models.layers.DropPath`, which is all MotionAGFormer needs.
+- `coremltools` and `mmpose` are not installed in that interpreter, so the
+  Core ML backend and the PyTorch RTMPose backend are both unavailable there.
+  Only the PyTorch MotionAGFormer backend runs today.
+
+## Phase 2 result: framework complete
+
+Implemented and tested (`tests/test_pose_benchmark.py`, 39 tests, all passing
+alongside the existing suite: 171 passed):
+
+- `bpt/benchmarks/pose/cache.py`: resumable npz+json cache, invalidated by
+  cache version or by any change in the metadata an entry was produced with.
+- `bpt/benchmarks/pose/datasets/fit3d.py`: TEST discovery (141 sequences over
+  s02/s12/s13), camera-parameter loading shaped for `geometry.projection`,
+  video info and a frame iterator. It returns `None` for ground truth rather
+  than inventing any, and accepts a separate train-style `joints3d_25`
+  directory if private GT ever arrives.
+- `bpt/benchmarks/pose/datasets/athletepose3d.py`: `valid.pkl` record loading
+  straight out of `/tmp/pose_3d.zip`, grouped into 826 per-camera sequences
+  over 293,753 frames, stacked into GT 2D, metric camera 3D, boxes, fps and
+  frame ids.
+- `bpt/benchmarks/pose/normalization.py`: both input conventions plus their
+  shared inverse, and the official left/right flip.
+- `scripts/run_m0_athletepose3d_oracle.py`: the GT-2D oracle runner.
+
+## Unit and scale validation (required before any physical MPJPE)
+
+- MotionAGFormer emits its prediction in the same normalized space it
+  consumes. The official H36M reader denormalizes with
+  `xy = (xy + [1, H/W]) * W/2` and `z = z * W/2`, then `train.py` multiplies
+  by the per-clip 2.5D factor before computing MPJPE.
+- AthletePose3D stores the reciprocal of that factor as `ratio`. Verified
+  numerically: root-relative `joint_3d_image / ratio` reproduces
+  root-relative `joint_3d_camera` to 16-41mm per sequence (25mm mean). That
+  residual is the 2.5D representation's own error and is reported with every
+  result as `representation_floor_mpjpe`.
+- The prediction path itself is correct: with GT 2D input, root-relative
+  target-frame xy lands within 5.8px mean (p90 10.8px) of GT 2D while the
+  subject's torso spans about 54px. The remaining error is depth.
+
+## Finding: the input normalization convention dominates the 3D error
+
+Three-sequence pilot, GT 2D input, flip test-time augmentation on, full real
+context, millimetres:
+
+| normalization | MPJPE | N-MPJPE | PA-MPJPE | angle MAE |
+| --- | ---: | ---: | ---: | ---: |
+| `full_image` (what BPT ships) | 380.5 | 265.6 | 165.2 | 32.4 deg |
+| `person_crop` (official demo path) | 151.5 | 145.1 | 94.7 | 15.9 deg |
+
+`full_image` is the H36M training convention and only holds while the subject
+fills a H36M-like share of the frame. In these AthletePose3D shots the subject
+is small (torso about 54px inside 1920px), so full-image normalization feeds
+the lifter a subject roughly an order of magnitude smaller than anything it
+saw in training. BPT's iOS pipeline uses the same `full_image` convention, so
+this is a real product finding, not just a benchmark artifact: whenever the
+user does not fill the frame, the 3D stage degrades hard. Evaluate the
+bbox-crop preprocessing before wiring MotionAGFormer into the app.
+
+## Throughput
+
+- The M0 contract scores one 27-frame window per target frame, so cost scales
+  with frames, not clips: 1.0 GMAC per window for XS.
+- Measured on this machine (MPS, PyTorch): 11 windows/s at batch 64,
+  15 at batch 256, 19 at batch 512. Flip test-time augmentation doubles the
+  forward count.
+- The runner therefore takes `--frame-stride`: every scored frame still gets
+  its own full 27-frame window and target index 21, only the set of scored
+  target frames is subsampled. Stride 10 over the whole validation split is
+  about 29,375 scored frames per normalization mode.
+
+## Fit3D status
+
+The TEST archive has no ground truth, so running RTMPose over its 177,703
+frames produces nothing scoreable. That inference is deliberately not run
+yet; the loader is ready for the moment private GT or the official test
+template becomes available. Do not substitute TRAIN.
+
 ## Current phase / next action
 
 - Phase 1 repository and dataset-convention audit: complete.
-- Phase 2 framework implementation: in progress.
-- Next: implement/test mappings, projections, alignments, metrics, temporal
-  indexing, cache serialization and dataset loaders. Then restore the official
-  pinned MotionAGFormer XS checkpoint/backend and run smoke tests.
+- Phase 2 framework implementation, tests, cache and loaders: complete.
+- Phase 3 backend restore and lifter-only evaluation: in progress. The full
+  validation-split oracle run (both normalization modes, stride 10) is the
+  active job; results land in
+  `assets/benchmarks/m0/athletepose3d_oracle/<mode>/summary.json`.
+- Next after that:
+  1. RGB Stage A. AthletePose3D images are a 29.1GB archive against about
+     22GB free, so this stays blocked unless a deterministic subset is
+     range-extracted; Fit3D can supply RGB but no GT.
+  2. Install `coremltools` and re-run the oracle through the Core ML
+     MotionAGFormer package to confirm PyTorch/Core ML parity, since the app
+     ships Core ML.
+  3. Decide the app-side normalization question raised above.
 
 ## Sources audited
 

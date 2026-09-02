@@ -31,14 +31,22 @@ MODES = ("full_image", "person_crop")
 
 
 def build_pixel_windows(
-    points: np.ndarray, window_size: int = WINDOW_SIZE, lookahead: int = LOOKAHEAD
+    points: np.ndarray,
+    window_size: int = WINDOW_SIZE,
+    lookahead: int = LOOKAHEAD,
+    targets: np.ndarray | None = None,
 ) -> np.ndarray:
-    """Stack every target frame's ``[T,17,2]`` window, edge-padded at clip ends."""
+    """Stack each target frame's ``[T,17,2]`` window, edge-padded at clip ends.
+
+    ``targets`` selects which frames to build windows for; every one of them
+    still gets its own full window and target index.
+    """
 
     points = np.asarray(points, dtype=np.float64)
     count = len(points)
+    frames = range(count) if targets is None else np.asarray(targets, dtype=np.int64)
     indices = np.stack(
-        [temporal_window_indices(count, frame, window_size, lookahead) for frame in range(count)]
+        [temporal_window_indices(count, int(frame), window_size, lookahead) for frame in frames]
     )
     return points[indices]
 
