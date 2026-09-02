@@ -469,16 +469,19 @@ def point(row):
 
 
 def draw_3d_views(panel, joints):
+    # H36M model space keeps the image convention, so y grows downward and a
+    # y-vertical view must not be flipped again. Only the depth-vertical top
+    # view is flipped, so that +z reads as "away from camera" pointing up.
     views = [
-        ("front x/y", (0, 1), (0, 0, panel.shape[1], panel.shape[0] // 3)),
-        ("side z/y", (2, 1), (0, panel.shape[0] // 3, panel.shape[1], 2 * panel.shape[0] // 3)),
-        ("top x/z", (0, 2), (0, 2 * panel.shape[0] // 3, panel.shape[1], panel.shape[0])),
+        ("front x/y", (0, 1), (0, 0, panel.shape[1], panel.shape[0] // 3), 1.0),
+        ("side z/y", (2, 1), (0, panel.shape[0] // 3, panel.shape[1], 2 * panel.shape[0] // 3), 1.0),
+        ("top x/z", (0, 2), (0, 2 * panel.shape[0] // 3, panel.shape[1], panel.shape[0]), -1.0),
     ]
-    for label, axes, rect in views:
-        draw_3d_projection(panel, joints, axes, rect, label)
+    for label, axes, rect, vertical_sign in views:
+        draw_3d_projection(panel, joints, axes, rect, label, vertical_sign)
 
 
-def draw_3d_projection(panel, joints, axes, rect, label):
+def draw_3d_projection(panel, joints, axes, rect, label, vertical_sign=1.0):
     x1, y1, x2, y2 = rect
     cv2.rectangle(panel, (x1, y1), (x2 - 1, y2 - 1), (215, 215, 215), 1)
     pts = np.asarray(joints[:, axes], dtype="float32")
@@ -486,7 +489,7 @@ def draw_3d_projection(panel, joints, axes, rect, label):
     span = float(np.max(np.abs(pts))) or 1.0
     scale = 0.42 * min(x2 - x1, y2 - y1) / span
     center = np.asarray([(x1 + x2) * 0.5, (y1 + y2) * 0.5], dtype="float32")
-    draw = pts * np.asarray([scale, -scale], dtype="float32") + center
+    draw = pts * np.asarray([scale, vertical_sign * scale], dtype="float32") + center
     for a, b in H36M_SKELETON:
         cv2.line(panel, point(draw[a]), point(draw[b]), (50, 90, 180), 2, cv2.LINE_AA)
     for p in draw:

@@ -103,9 +103,9 @@ Updated: 2026-09-02 (Asia/Seoul), phase 3 in progress
   2.3.4. `timm==0.6.11` from `requirements.txt` cannot import on Python 3.13
   (mutable dataclass default in `maxxvit`); timm 1.0.29 works and still
   exposes `timm.models.layers.DropPath`, which is all MotionAGFormer needs.
-- `coremltools` and `mmpose` are not installed in that interpreter, so the
-  Core ML backend and the PyTorch RTMPose backend are both unavailable there.
-  Only the PyTorch MotionAGFormer backend runs today.
+- `coremltools` 9.0 was installed during phase 3, which restores the Core ML
+  path for both models. `mmpose` is still absent, so the PyTorch RTMPose
+  backend remains unavailable; RTMPose runs only through Core ML.
 
 ## Phase 2 result: framework complete
 
@@ -144,13 +144,18 @@ alongside the existing suite: 171 passed):
 
 ## Finding: the input normalization convention dominates the 3D error
 
-Three-sequence pilot, GT 2D input, flip test-time augmentation on, full real
-context, millimetres:
+Full AthletePose3D validation split, all 826 sequences, GT 2D input, official
+flip test-time augmentation, frame stride 10, full real context, millimetres
+(456,637 joint observations per mode, identical frames in both):
 
 | normalization | MPJPE | N-MPJPE | PA-MPJPE | angle MAE |
 | --- | ---: | ---: | ---: | ---: |
-| `full_image` (what BPT ships) | 380.5 | 265.6 | 165.2 | 32.4 deg |
-| `person_crop` (official demo path) | 151.5 | 145.1 | 94.7 | 15.9 deg |
+| `full_image` (what BPT ships) | 327.2 | 254.6 | 158.4 | 26.4 deg |
+| `person_crop` (official demo path) | 190.1 | 181.6 | 123.4 | 19.0 deg |
+
+All-frames context gives 330.9 / 186.4 MPJPE for the same two modes. The 2.5D
+representation floor is 33.7mm, so neither mode is anywhere near
+representation-limited: the gap is the model's.
 
 `full_image` is the H36M training convention and only holds while the subject
 fills a H36M-like share of the frame. In these AthletePose3D shots the subject
@@ -184,17 +189,19 @@ template becomes available. Do not substitute TRAIN.
 
 - Phase 1 repository and dataset-convention audit: complete.
 - Phase 2 framework implementation, tests, cache and loaders: complete.
-- Phase 3 backend restore and lifter-only evaluation: in progress. The full
-  validation-split oracle run (both normalization modes, stride 10) is the
-  active job; results land in
-  `assets/benchmarks/m0/athletepose3d_oracle/<mode>/summary.json`.
+- Phase 3 backend restore and lifter-only evaluation: complete. Both
+  normalization modes ran over all 826 validation sequences at stride 10;
+  per-sequence caches and summaries are in
+  `assets/benchmarks/m0/athletepose3d_oracle/<mode>/`.
+- Core ML MotionAGFormer-XS was re-exported during this phase
+  (`coreml_safe`, FP16) to `assets/coreml/motionagformer_xs.mlpackage`, so the
+  PyTorch/Core ML parity check is now unblocked.
 - Next after that:
   1. RGB Stage A. AthletePose3D images are a 29.1GB archive against about
      22GB free, so this stays blocked unless a deterministic subset is
      range-extracted; Fit3D can supply RGB but no GT.
-  2. Install `coremltools` and re-run the oracle through the Core ML
-     MotionAGFormer package to confirm PyTorch/Core ML parity, since the app
-     ships Core ML.
+  2. Re-run the oracle through the Core ML package (now exported) to confirm
+     PyTorch/Core ML parity, since the app ships Core ML.
   3. Decide the app-side normalization question raised above.
 
 ## Sources audited
