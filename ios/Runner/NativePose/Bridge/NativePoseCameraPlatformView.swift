@@ -3,7 +3,6 @@ import SwiftUI
 import UIKit
 
 final class NativePoseCameraPlatformView: NSObject, FlutterPlatformView {
-    private let containerView: UIView
     private let hostingController: UIHostingController<AnyView>
     private let channel: FlutterMethodChannel
 
@@ -14,10 +13,6 @@ final class NativePoseCameraPlatformView: NSObject, FlutterPlatformView {
         exercise: NativePoseExercise?,
         exerciseId: String?
     ) {
-        containerView = UIView(frame: frame)
-        containerView.backgroundColor = .black
-
-        // Per-view channel so Flutter can render the rep/status HUD itself.
         let channel = FlutterMethodChannel(
             name: "bpt/native_pose_camera/\(viewId)",
             binaryMessenger: messenger
@@ -41,18 +36,13 @@ final class NativePoseCameraPlatformView: NSObject, FlutterPlatformView {
         hostingController = UIHostingController(rootView: rootView)
         super.init()
 
-        hostingController.view.frame = containerView.bounds
+        hostingController.view.frame = frame
         hostingController.view.backgroundColor = .black
         hostingController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        containerView.addSubview(hostingController.view)
     }
 
     func view() -> UIView {
-        containerView
-    }
-
-    deinit {
-        hostingController.view.removeFromSuperview()
+        hostingController.view
     }
 }
 
