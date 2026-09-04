@@ -69,7 +69,7 @@ final mockExercises = <ExerciseModel>[
     name: 'Barbell Row',
     nameKr: '바벨로우',
     description: 'Back and posterior-chain pulling exercise using a barbell.',
-    imagePath: 'assets/images/barbellraw.png',
+    imagePath: 'assets/images/row.png',
     type: ExerciseType.reps,
     defaultReps: 12,
     defaultSets: 3,

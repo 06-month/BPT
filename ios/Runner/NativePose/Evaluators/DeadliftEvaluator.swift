@@ -488,7 +488,7 @@ final class DeadliftEvaluator {
         if rightKneeValid && rightAnkleValid {
             rightLowerShin = rightKnee.y + (rightAnkle.y - rightKnee.y) * config.wristLowerShinRatio
         }
-
+        
         let wristLowerShinY: Double?
         if let l = leftLowerShin, let r = rightLowerShin {
             wristLowerShinY = (l + r) * 0.5

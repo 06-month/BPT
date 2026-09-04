@@ -125,9 +125,9 @@ final class BenchPressEvaluator {
         let lastStable = stableStatus
         var status = updateStableStatus(rawCandidate: rawCandidate, measurements: measurements)
         updateTopBaselineIfNeeded(status: status, measurements: measurements)
-
+        
         let transitionedToTop = (lastStable != .top && status == .top)
-
+        
         let repUpdate = updateRepState(
             frameIndex: frameIndex,
             previousStatus: lastStable,
@@ -462,15 +462,15 @@ final class BenchPressEvaluator {
 
         if repStarted {
             updateCurrentRep(measurements)
-
+            
             if status == .lowering {
                 sawLowering = true
             }
-
+            
             if status == .bottom {
                 sawBottom = true
             }
-
+            
             if currentRepBottomFrame == nil {
                 let sufficientlyFlexed = measurements.avgElbowAngleDegrees.map { $0 <= config.validBottomElbowAngleThreshold } ?? false
                 if status == .bottom {
@@ -479,11 +479,11 @@ final class BenchPressEvaluator {
                     currentRepBottomFrame = frameIndex
                 }
             }
-
+            
             if status == .pressing {
                 sawPressing = true
             }
-
+            
             if let delta = measurements.elbowAngleDeltaDegrees, delta > config.elbowAngleDeltaThreshold {
                 hadElbowExtensionDuringRep = true
             }
@@ -491,9 +491,9 @@ final class BenchPressEvaluator {
 
         var done = false
         var statusOverride: BenchPressStatus? = nil
-
+        
         let shouldComplete = shouldCompleteBenchPressRep(measurements: measurements, transitionedToTop: transitionedToTop, lastStable: previousStatus)
-
+        
         if shouldComplete {
             done = completeRep(frameIndex: frameIndex, measurements: measurements)
             if done {
@@ -548,23 +548,23 @@ final class BenchPressEvaluator {
 
     private func shouldCompleteBenchPressRep(measurements: Measurements, transitionedToTop: Bool, lastStable: BenchPressStatus) -> Bool {
         guard repStarted else { return false }
-
+        
         let hasLoweringOrBottom = sawLowering || currentRepBottomFrame != nil || sawBottom
         let elbowValid = currentRepMinElbowAngleDegrees.map {
             $0 <= config.validBottomElbowAngleThreshold || $0 <= effectiveBottomThreshold
         } ?? false
         let depthValid = currentRepDepthSignalReliable
             && (currentRepMaxDepthNorm.map { $0 >= config.minRepDepthNorm } ?? false)
-
+            
         let hasBottomDepth = elbowValid || depthValid
-
+        
         if transitionedToTop {
             if lastStable == .unknown {
                 // Fallback for: pressing -> unknown -> top OR lowering -> unknown -> top
                 let isFallbackSequence = (lastNonUnknownStableStatus == .pressing || lastNonUnknownStableStatus == .lowering || lastNonUnknownStableStatus == .bottom)
                 let elbowAtTopValid = measurements.avgElbowAngleDegrees.map { $0 >= effectiveTopThreshold } ?? false
                 let minElbowValid = currentRepMinElbowAngleDegrees.map { $0 <= config.validBottomElbowAngleThreshold } ?? false
-
+                
                 if isFallbackSequence && minElbowValid && elbowAtTopValid && hasLoweringOrBottom {
                     return true
                 }
@@ -575,7 +575,7 @@ final class BenchPressEvaluator {
                 }
             }
         }
-
+        
         return false
     }
 

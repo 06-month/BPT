@@ -9,6 +9,7 @@ import '../../../data/mock_data.dart';
 import '../../../models/exercise_model.dart';
 import '../../../models/workout_record_model.dart';
 import '../providers/home_provider.dart';
+import '../../workout/widgets/camera_guide_modal.dart';
 
 // ── File-level state for home exercise picker ──────────────────────────────
 final _selectedExIdProvider =
@@ -905,15 +906,24 @@ class _StartButton extends ConsumerWidget {
       child: SafeArea(
         top: false,
         child: ElevatedButton(
-          onPressed: () {
-            context.push(
-              RouteConstants.nativePoseWorkout,
-              extra: {
-                'exerciseId': selectedId,
-                'targetReps': reps,
-                'targetSets': sets,
-              },
+          onPressed: () async {
+            final isKo = s.locale == 'ko';
+            final confirmed = await showCameraGuideModal(
+              context: context,
+              exerciseId: selectedId,
+              exerciseName: exName,
+              isKo: isKo,
             );
+            if (confirmed && context.mounted) {
+              context.push(
+                RouteConstants.nativePoseWorkout,
+                extra: {
+                  'exerciseId': selectedId,
+                  'targetReps': reps,
+                  'targetSets': sets,
+                },
+              );
+            }
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,

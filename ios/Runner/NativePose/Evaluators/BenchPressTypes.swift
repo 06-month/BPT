@@ -70,7 +70,7 @@ struct BenchPressFrameResult {
             "saw_lowering": sawLowering,
             "saw_pressing": sawPressing,
             "last_completed_rep_summary": lastCompletedRepSummary.map { $0.dictionary as Any } ?? NSNull(),
-
+            
             // New HUD/debug fields
             "had_elbow_extension_during_rep": hadElbowExtensionDuringRep,
             "bottom_frame_exists": bottomFrameExists,

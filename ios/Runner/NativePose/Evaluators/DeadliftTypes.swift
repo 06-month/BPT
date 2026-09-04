@@ -114,7 +114,7 @@ struct DeadliftFrameResult {
             "reached_top": reachedTop,
             "saw_lowering": sawLowering,
             "last_completed_rep_summary": lastCompletedRepSummary.map { $0.dictionary as Any } ?? NSNull(),
-
+            
             // New arm/bar proxy & bottom detection fields
             "arm_bar_proxy_y_norm": jsonValue(armBarProxyYNorm),
             "arm_bar_proxy_delta1": jsonValue(armBarProxyDelta1),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,9 +17,7 @@ class ProfileScreen extends ConsumerWidget {
     final s = ref.watch(appStringsProvider);
     final user = ref.watch(profileUserProvider);
 
-    if (user == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    if (user == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     return Scaffold(
       appBar: AppBar(title: Text(s.profile)),
@@ -183,8 +182,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
     final current = ref.read(profileUserProvider);
     if (current == null) return;
     final name = _nameCtrl.text.trim();
-    final initials =
-        name.isNotEmpty ? name[0].toUpperCase() : current.avatarInitials;
+    final initials = name.isNotEmpty ? name[0].toUpperCase() : current.avatarInitials;
     final newWeight = double.tryParse(_weightCtrl.text) ?? 0.0;
     final newHeight = double.tryParse(_heightCtrl.text) ?? 0.0;
 
@@ -321,6 +319,7 @@ class _Field extends StatelessWidget {
     required this.icon,
     required this.isDark,
     this.keyboardType,
+    this.inputFormatters,
     this.validator,
   });
   final TextEditingController controller;
@@ -328,6 +327,7 @@ class _Field extends StatelessWidget {
   final IconData icon;
   final bool isDark;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
 
   @override
@@ -335,12 +335,15 @@ class _Field extends StatelessWidget {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, size: 20),
         filled: true,
-        fillColor: isDark ? AppColors.darkBackground : AppColors.lightInputFill,
+        fillColor: isDark
+            ? AppColors.darkBackground
+            : AppColors.lightInputFill,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -450,7 +453,9 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(value,
               style: TextStyle(
-                  color: color, fontWeight: FontWeight.w800, fontSize: 16)),
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16)),
           const SizedBox(height: 2),
           Text(
             label,
@@ -527,7 +532,8 @@ class _SettingsSection extends ConsumerWidget {
             icon: Icons.volume_up_outlined,
             label: s.soundEffects,
             value: sound,
-            onChanged: (v) => ref.read(soundEnabledProvider.notifier).state = v,
+            onChanged: (v) =>
+                ref.read(soundEnabledProvider.notifier).state = v,
           ),
           Divider(height: 1, indent: 56, color: theme.dividerColor),
           _ToggleTile(
@@ -682,7 +688,7 @@ class _ToggleTile extends StatelessWidget {
       trailing: Switch.adaptive(
         value: value,
         onChanged: onChanged,
-        activeThumbColor: AppColors.primary,
+        activeColor: AppColors.primary,
       ),
     );
   }
@@ -719,8 +725,7 @@ class _WorkoutHistorySection extends ConsumerWidget {
                     child: Text(
                       s.locale == 'ko' ? '아직 운동 기록이 없어요' : 'No workouts yet',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                       ),
                     ),
                   ),
@@ -818,7 +823,8 @@ class _LogoutButton extends ConsumerWidget {
         foregroundColor: AppColors.error,
         side: const BorderSide(color: AppColors.error),
         minimumSize: const Size(double.infinity, 52),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
@@ -841,20 +847,8 @@ class _BirthDatePicker extends StatelessWidget {
 
   String _format(DateTime d) {
     if (isKo) return '${d.year}년 ${d.month}월 ${d.day}일';
-    final m = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
+    final m = ['Jan','Feb','Mar','Apr','May','Jun',
+                'Jul','Aug','Sep','Oct','Nov','Dec'];
     return '${m[d.month - 1]} ${d.day}, ${d.year}';
   }
 

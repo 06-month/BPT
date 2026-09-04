@@ -1,11 +1,20 @@
+# Claude memory
+.claude/
+
 # macOS and editor state
 .DS_Store
 **/.DS_Store
 .idea/
 .vscode/
-.claude/settings.local.json
+*.iml
+*.ipr
+*.iws
 *.xcuserstate
 **/xcuserdata/
+.atom/
+.history
+.swiftpm/
+migrate_working_dir/
 
 # Python
 **/__pycache__/
@@ -24,6 +33,10 @@ venv/
 **/.flutter-plugins-dependencies
 **/build/
 **/.packages
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.pub-cache/
+.pub/
 
 # iOS / CocoaPods / Xcode generated files
 **/Pods/
@@ -36,12 +49,20 @@ venv/
 # Android generated/local files
 **/android/local.properties
 **/.gradle/
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Symbolication / obfuscation related
+app.*.symbols
+app.*.map.json
 
 # Research dependencies and generated artifacts
 mediapipe/
 outputs/
 assets/*
 !assets/README.md
+!assets/images/
 models/*
 !models/README.md
 !models/rtmpose/
@@ -61,7 +82,7 @@ external/*
 *.mp4
 *.mov
 *.avi
-!bpt/ios/Runner/NativePose/Models/**
+!ios/Runner/NativePose/Models/**
 
 # Local logs and scratch files
 *.log

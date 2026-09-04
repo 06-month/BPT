@@ -7,6 +7,7 @@ import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/mock_data.dart';
 import '../../../models/exercise_model.dart';
+import '../widgets/camera_guide_modal.dart';
 
 final _selectedExerciseIdProvider = StateProvider<String>((ref) => 'squat');
 final _targetRepsProvider = StateProvider<int>((ref) => 15);
@@ -104,15 +105,24 @@ class ExerciseSelectionScreen extends ConsumerWidget {
             reps: targetReps,
             sets: targetSets,
             strings: s,
-            onStart: () {
-              context.push(
-                RouteConstants.nativePoseWorkout,
-                extra: {
-                  'exerciseId': selectedEx.id,
-                  'targetReps': targetReps,
-                  'targetSets': targetSets,
-                },
+            onStart: () async {
+              final isKo = s.locale == 'ko';
+              final confirmed = await showCameraGuideModal(
+                context: context,
+                exerciseId: selectedEx.id,
+                exerciseName: isKo ? selectedEx.nameKr : selectedEx.name,
+                isKo: isKo,
               );
+              if (confirmed && context.mounted) {
+                context.push(
+                  RouteConstants.nativePoseWorkout,
+                  extra: {
+                    'exerciseId': selectedEx.id,
+                    'targetReps': targetReps,
+                    'targetSets': targetSets,
+                  },
+                );
+              }
             },
           ),
         ],
