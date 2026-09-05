@@ -46,3 +46,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local documents / working files
+AGENTS.md
+BPT_캡스톤디자인Ⅰ_중간보고서.docx
+BPT계획발표.pptx
+NATIVE_POSE_INTEGRATION_PLAN.md
+assets/images/row.png
+bpt/
+ios/Flutter/Profile.xcconfig
+logo summary.png
+logo.png
+logo2.png
+logo_BPT.png
+캡스톤 디자인1 최종보고서(전준, 최한민, 서진정.hwp
