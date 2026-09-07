@@ -1,48 +1,54 @@
 # Claude memory
 .claude/
 
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
+# macOS and editor state
 .DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related
+**/.DS_Store
+.idea/
+.vscode/
 *.iml
 *.ipr
 *.iws
-.idea/
+*.xcuserstate
+**/xcuserdata/
+.atom/
+.history
+.swiftpm/
+migrate_working_dir/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# Python
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
 
-# Flutter/Dart/Pub related
+# Flutter / Dart
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/build/
+**/.packages
 **/doc/api/
 **/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
 
-# Symbolication related
-app.*.symbols
+# iOS / CocoaPods / Xcode generated files
+**/Pods/
+**/.symlinks/
+**/DerivedData/
+**/Flutter/ephemeral/
+**/Flutter/Generated.xcconfig
+**/Flutter/flutter_export_environment.sh
 
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
+# Android generated/local files
+**/android/local.properties
+**/.gradle/
 /android/app/debug
 /android/app/profile
 /android/app/release
@@ -60,3 +66,40 @@ logo.png
 logo2.png
 logo_BPT.png
 캡스톤 디자인1 최종보고서(전준, 최한민, 서진정.hwp
+
+# Symbolication / obfuscation related
+app.*.symbols
+app.*.map.json
+
+# Research dependencies and generated artifacts
+mediapipe/
+outputs/
+assets/*
+!assets/README.md
+!assets/images/
+models/*
+!models/README.md
+!models/rtmpose/
+models/rtmpose/*
+!models/rtmpose/*.py
+external/*
+!external/README.md
+
+# Large training/export formats outside the bundled iOS runtime model folder
+*.pt
+*.pth
+*.onnx
+*.engine
+*.ckpt
+*.safetensors
+*.tflite
+*.mp4
+*.mov
+*.avi
+!ios/Runner/NativePose/Models/**
+
+# Local logs and scratch files
+*.log
+*.tmp
+*.swp
+*.bak
