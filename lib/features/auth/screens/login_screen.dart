@@ -176,6 +176,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           _buildLoginForm(s, auth, theme),
                           const SizedBox(height: 28),
                           const Spacer(),
+                          _buildStartButton(auth, s),
+                          const SizedBox(height: 20),
                           _buildBottomSignUpToggle(s),
                           const SizedBox(height: 12),
                         ],
@@ -299,7 +301,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       left: w * 0.02,
                       top: 0,
                       child: Transform.rotate(
-                        angle: -10 * math.pi / 180,
+                        angle: -20 * math.pi / 180,
                         child: Image.asset(
                           'assets/images/decoration/spark_pink.png',
                           width: w * 0.22,
@@ -418,9 +420,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             obscureText: _obscureLogin,
             suffixIcon: IconButton(
               icon: Icon(
-                _obscureLogin
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
+                Icons.visibility_outlined,
                 size: 22,
                 // 비공개일 때는 회색, 표시할 때는 라임색으로 변한다.
                 color:
@@ -447,7 +447,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             _buildErrorBox(auth.error!, s),
             const SizedBox(height: 16),
           ],
-          _buildStartButton(auth, s),
         ],
       ),
     );
