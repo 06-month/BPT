@@ -272,9 +272,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget _buildCharacterCard(s) {
     final isKo = s.locale == 'ko';
     return Center(
-      child: SizedBox(
-        width: 322,
-        height: 204,
+      child: AspectRatio(
+        aspectRatio: 322 / 204,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final w = constraints.maxWidth;
