@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
+  // ── BPT Brand Palette (new design system) ────────────────
+  // 신규 디자인의 메인 팔레트. 화면 재디자인 시 이 상수들을 사용한다.
+  static const Color green = Color(0xFFB3EF3F); // 포인트 액션 / CTA
+  static const Color purple = Color(0xFFB386FD); // 캐릭터 카드 / 강조 배경
+  static const Color red = Color(0xFFE65834); // 경고 / 강한 강조
+  static const Color pink = Color(0xFFFE9894); // 장식 / 서브 포인트
+  static const Color black = Color(0xFF101010); // 기본 배경
+  static const Color white = Color(0xFFEDF1F4); // 기본 전경/텍스트
+  static const Color grey = Color(0xFF1E1E1E); // 카드 / 입력 필드 배경
+
   // Primary – Teal (energy + professionalism)
   static const Color primary = Color(0xFF00C6AE);
   static const Color primaryDark = Color(0xFF009E8A);
