@@ -296,8 +296,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       ),
                     ),
                     Positioned(
-                      left: w * 0.12,
-                      top: h * 0.18,
+                      left: w * 0.02,
+                      top: 0,
                       child: Transform.rotate(
                         angle: -10 * math.pi / 180,
                         child: Image.asset(
