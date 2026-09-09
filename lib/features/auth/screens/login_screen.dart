@@ -297,9 +297,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     ),
                     Positioned(
                       left: w * 0.12,
-                      top: h * 0.23,
+                      top: h * 0.18,
                       child: Transform.rotate(
-                        angle: -20 * math.pi / 180,
+                        angle: -10 * math.pi / 180,
                         child: Image.asset(
                           'assets/images/decoration/spark_pink.png',
                           width: w * 0.22,
@@ -311,11 +311,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     Positioned(
                       right: w * 0.07,
                       top: h * 0.60,
-                      child: Image.asset(
-                        'assets/images/decoration/heart_pink.png',
-                        width: w * 0.21,
-                        height: w * 0.21,
-                        excludeFromSemantics: true,
+                      child: Transform.rotate(
+                        angle: -12 * math.pi / 180,
+                        child: Image.asset(
+                          'assets/images/decoration/heart_pink.png',
+                          width: w * 0.21,
+                          height: w * 0.21,
+                          excludeFromSemantics: true,
+                        ),
                       ),
                     ),
                     Positioned(
