@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/account_recovery_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/report/screens/report_screen.dart';
@@ -29,7 +30,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       if (loc == RouteConstants.splash) return null;
 
-      if (!loggedIn && loc != RouteConstants.login) return RouteConstants.login;
+      if (!loggedIn &&
+          loc != RouteConstants.login &&
+          loc != RouteConstants.accountRecovery) {
+        return RouteConstants.login;
+      }
       if (loggedIn && loc == RouteConstants.login) return RouteConstants.home;
       return null;
     },
@@ -44,6 +49,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           state,
           const LoginScreen(),
         ),
+      ),
+      GoRoute(
+        path: RouteConstants.accountRecovery,
+        pageBuilder: (context, state) =>
+            _slidePage(state, const AccountRecoveryScreen()),
       ),
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),

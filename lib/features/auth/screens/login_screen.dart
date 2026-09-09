@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/route_constants.dart';
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../providers/auth_provider.dart';
@@ -104,6 +106,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   void _toggleMode() {
     setState(() => _isSignUp = !_isSignUp);
     _animCtrl.forward(from: 0);
+  }
+
+  Future<void> _openAccountRecovery() async {
+    final email = await context.push<String>(RouteConstants.accountRecovery);
+    if (!mounted || email == null) return;
+    _loginEmailCtrl.text = email;
+    _loginPasswordCtrl.clear();
+    setState(() => _obscureLogin = true);
   }
 
   @override
@@ -433,12 +443,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerRight,
-            child: Text(
-              isKo ? '아이디/비밀번호 찾기' : 'Find ID / Password',
-              style: const TextStyle(
-                color: Color(0xFF8A8F94),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+            child: TextButton(
+              onPressed: _openAccountRecovery,
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(0, 32),
+                foregroundColor: const Color(0xFF8A8F94),
+              ),
+              child: Text(
+                isKo ? '아이디/비밀번호 찾기' : 'Find ID / Password',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
