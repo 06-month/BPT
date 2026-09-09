@@ -451,6 +451,7 @@ struct CameraPosePreview: View {
                 )
             }
         }
+        .ignoresSafeArea()
         .navigationTitle(exercise.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
