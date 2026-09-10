@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/route_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../widgets/onboarding_scaffold.dart';
 
@@ -30,9 +31,7 @@ class _OnboardingCaptureScreenState extends State<OnboardingCaptureScreen> {
       totalSteps: 4,
       onBack: () => context.pop(),
       nextLabel: '카메라 켜기',
-      onNext: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('카메라 기능은 아직 준비 중이야.'),
-      )),
+      onNext: () => context.push(RouteConstants.onboardingScan),
       headline: const Text('마지막이야!\n세 방향만 찍으면 끝이야',
           style: TextStyle(
               fontSize: 27,

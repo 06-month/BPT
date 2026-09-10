@@ -7,6 +7,8 @@ class RouteConstants {
   static const String onboardingBody = '/onboarding/body';
   static const String onboardingGoal = '/onboarding/goal';
   static const String onboardingCapture = '/onboarding/capture';
+  static const String onboardingScan = '/onboarding/capture/scan';
+  static const String onboardingAnalyzing = '/onboarding/analyzing';
   static const String home = '/home';
   static const String report = '/report';
   static const String profile = '/profile';
