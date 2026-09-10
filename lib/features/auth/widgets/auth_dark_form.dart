@@ -64,26 +64,34 @@ class AuthScrollScaffold extends StatelessWidget {
         child: Scaffold(
           backgroundColor: AppColors.black,
           body: SafeArea(
-            child: Column(
-              children: [
-                AuthHeaderBar(title: title, onBack: onBack),
-                Expanded(
-                  child: SingleChildScrollView(
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: body,
+            child: GestureDetector(
+              // Tapping anywhere that isn't a field/button (empty space,
+              // labels, a disabled button) should still blur the focused
+              // field so its inline validation can show — relying only on
+              // "tapped another field" misses most real dismiss gestures.
+              behavior: HitTestBehavior.opaque,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: Column(
+                children: [
+                  AuthHeaderBar(title: title, onBack: onBack),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: body,
+                      ),
                     ),
                   ),
-                ),
-                if (bottomBar != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
-                    child: SizedBox(width: double.infinity, child: bottomBar),
-                  ),
-              ],
+                  if (bottomBar != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                      child: SizedBox(width: double.infinity, child: bottomBar),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
