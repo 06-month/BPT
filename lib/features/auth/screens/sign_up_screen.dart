@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/route_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../providers/sign_up_provider.dart';
 import '../widgets/auth_dark_form.dart';
@@ -32,8 +33,44 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
 
+  bool _emailTouched = false;
+  bool _passwordTouched = false;
+  bool _confirmPasswordTouched = false;
+  bool _phoneTouched = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailFocus.addListener(_onEmailFocusChange);
+    _passwordFocus.addListener(_onPasswordFocusChange);
+    _confirmPasswordFocus.addListener(_onConfirmPasswordFocusChange);
+    _phoneFocus.addListener(_onPhoneFocusChange);
+  }
+
+  void _onEmailFocusChange() {
+    if (!_emailFocus.hasFocus) setState(() => _emailTouched = true);
+  }
+
+  void _onPasswordFocusChange() {
+    if (!_passwordFocus.hasFocus) setState(() => _passwordTouched = true);
+  }
+
+  void _onConfirmPasswordFocusChange() {
+    if (!_confirmPasswordFocus.hasFocus) {
+      setState(() => _confirmPasswordTouched = true);
+    }
+  }
+
+  void _onPhoneFocusChange() {
+    if (!_phoneFocus.hasFocus) setState(() => _phoneTouched = true);
+  }
+
   @override
   void dispose() {
+    _emailFocus.removeListener(_onEmailFocusChange);
+    _passwordFocus.removeListener(_onPasswordFocusChange);
+    _confirmPasswordFocus.removeListener(_onConfirmPasswordFocusChange);
+    _phoneFocus.removeListener(_onPhoneFocusChange);
     for (final controller in [
       _email,
       _id,
@@ -94,9 +131,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   void _submit(SignUpState state) {
     if (!state.canSubmit) return;
     FocusScope.of(context).unfocus();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('미리보기 완료! 실제 계정은 아직 생성되지 않았어.'),
-    ));
+    context.push(RouteConstants.onboardingGender);
   }
 
   @override
@@ -150,6 +185,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           keyboard: TextInputType.emailAddress,
           onChanged: notifier.changeEmail,
         ),
+        if (_emailTouched && state.email.isNotEmpty && !state.emailValid) ...[
+          const SizedBox(height: 8),
+          const Text('올바른 이메일 형식이 아니야.',
+              style: TextStyle(color: AppColors.red, fontSize: 13)),
+        ],
         const SizedBox(height: 14),
         const AuthFieldLabel('아이디'),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -186,6 +226,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           suffix: authEyeToggle(_hidePassword,
               () => setState(() => _hidePassword = !_hidePassword)),
         ),
+        if (_passwordTouched &&
+            state.password.isNotEmpty &&
+            !state.passwordValid) ...[
+          const SizedBox(height: 8),
+          const Text('비밀번호는 8자 이상이어야 해.',
+              style: TextStyle(color: AppColors.red, fontSize: 13)),
+        ],
         const SizedBox(height: 14),
         const AuthFieldLabel('비밀번호 재확인'),
         AuthTextField(
@@ -202,7 +249,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   () => setState(
                       () => _hideConfirmPassword = !_hideConfirmPassword)),
         ),
-        if (state.confirmPassword.isNotEmpty && !state.confirmValid) ...[
+        if (_confirmPasswordTouched &&
+            state.confirmPassword.isNotEmpty &&
+            !state.confirmValid) ...[
           const SizedBox(height: 8),
           const Text('비밀번호가 서로 달라. 다시 확인해줘.',
               style: TextStyle(color: AppColors.red, fontSize: 13)),
@@ -221,6 +270,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           ],
           onChanged: notifier.changePhone,
         ),
+        if (_phoneTouched && state.phone.isNotEmpty && !state.phoneValid) ...[
+          const SizedBox(height: 8),
+          const Text('전화번호를 정확히 입력해줘.',
+              style: TextStyle(color: AppColors.red, fontSize: 13)),
+        ],
         const SizedBox(height: 14),
         const AuthFieldLabel('생년월일'),
         AuthTextField(

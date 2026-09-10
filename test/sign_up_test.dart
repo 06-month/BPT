@@ -1,9 +1,12 @@
+import 'package:bpt/core/constants/route_constants.dart';
 import 'package:bpt/core/theme/app_colors.dart';
 import 'package:bpt/features/auth/providers/sign_up_provider.dart';
 import 'package:bpt/features/auth/screens/sign_up_screen.dart';
+import 'package:bpt/features/onboarding/screens/onboarding_gender_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   test('id duplicate check and submit gating follow the mock rules', () {
@@ -42,8 +45,15 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    final router = GoRouter(routes: [
+      GoRoute(path: '/', builder: (context, state) => const SignUpScreen()),
+      GoRoute(
+        path: RouteConstants.onboardingGender,
+        builder: (context, state) => const OnboardingGenderScreen(),
+      ),
+    ]);
     await tester.pumpWidget(
-        const ProviderScope(child: MaterialApp(home: SignUpScreen())));
+        ProviderScope(child: MaterialApp.router(routerConfig: router)));
 
     final fields = find.byType(TextField);
     // email, id, password, confirm, phone, birth date
@@ -72,6 +82,7 @@ void main() {
 
     await tester.enterText(fields.at(2), '12345678');
     await tester.enterText(fields.at(3), '00000000');
+    await tester.tap(fields.at(4)); // blur the confirm field
     await tester.pump();
     expect(find.text('비밀번호가 서로 달라. 다시 확인해줘.'), findsOneWidget);
     // Mismatched: both password fields show a visibility toggle.
@@ -107,8 +118,75 @@ void main() {
     expect(tester.widget<ElevatedButton>(submitFinder).onPressed, isNotNull);
 
     await tester.tap(submitFinder);
+    await tester.pumpAndSettle();
+    expect(find.byType(OnboardingGenderScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'invalid formats show an inline error only after leaving the field',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: SignUpScreen())));
+
+    final fields = find.byType(TextField);
+    const email = 0, id = 1, password = 2, phone = 4;
+
+    // Typing an invalid email shows no error until focus leaves the field.
+    await tester.enterText(fields.at(email), 'not-an-email');
     await tester.pump();
-    expect(find.text('미리보기 완료! 실제 계정은 아직 생성되지 않았어.'), findsOneWidget);
+    expect(find.text('올바른 이메일 형식이 아니야.'), findsNothing);
+    await tester.tap(fields.at(id));
+    await tester.pump();
+    expect(find.text('올바른 이메일 형식이 아니야.'), findsOneWidget);
+
+    // Fixing it clears the error immediately (no need to blur again).
+    await tester.enterText(fields.at(email), 'jihoon@bpt.app');
+    await tester.pump();
+    expect(find.text('올바른 이메일 형식이 아니야.'), findsNothing);
+
+    await tester.enterText(fields.at(password), '123');
+    await tester.pump();
+    expect(find.text('비밀번호는 8자 이상이어야 해.'), findsNothing);
+    await tester.tap(fields.at(phone));
+    await tester.pump();
+    expect(find.text('비밀번호는 8자 이상이어야 해.'), findsOneWidget);
+
+    await tester.enterText(fields.at(phone), '123');
+    await tester.pump();
+    expect(find.text('전화번호를 정확히 입력해줘.'), findsNothing);
+    await tester.tap(fields.at(email));
+    await tester.pump();
+    expect(find.text('전화번호를 정확히 입력해줘.'), findsOneWidget);
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'tapping empty space (not just another field) also blurs and shows the error',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: SignUpScreen())));
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'not-an-email');
+    await tester.pump();
+    expect(find.text('올바른 이메일 형식이 아니야.'), findsNothing);
+
+    // Tap a plain, non-interactive label instead of another field —
+    // this must still blur the email field via the scaffold's
+    // tap-outside handling.
+    await tester.tap(find.text('회원가입'));
+    await tester.pump();
+    expect(find.text('올바른 이메일 형식이 아니야.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

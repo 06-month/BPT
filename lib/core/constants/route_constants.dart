@@ -3,6 +3,8 @@ class RouteConstants {
   static const String login = '/login';
   static const String accountRecovery = '/account-recovery';
   static const String signUp = '/sign-up';
+  static const String onboardingGender = '/onboarding/gender';
+  static const String onboardingBody = '/onboarding/body';
   static const String home = '/home';
   static const String report = '/report';
   static const String profile = '/profile';
