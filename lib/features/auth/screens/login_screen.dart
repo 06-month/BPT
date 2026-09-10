@@ -357,16 +357,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ),
               onPressed: () => setState(() => _obscureLogin = !_obscureLogin),
             ),
-            validator: (v) => v == null || v.length < 6 ? s.minSixChars : null,
+            validator: (v) => v == null || v.length < 8 ? s.minEightChars : null,
           ),
-          const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: _openAccountRecovery,
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
-                minimumSize: const Size(0, 32),
+                minimumSize: const Size(0, 28),
                 foregroundColor: const Color(0xFF8A8F94),
               ),
               child: Text(
@@ -494,7 +493,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       case 'username_already_exists':
         return isKo ? '이미 사용 중인 이메일이에요.' : 'This email is already in use.';
       case 'password_too_weak':
-        return isKo ? '비밀번호가 너무 짧아요. 6자 이상 입력해주세요.' : 'Password is too weak.';
+        return isKo ? '비밀번호가 너무 짧아요. 8자 이상 입력해주세요.' : 'Password is too weak.';
       case 'invalid_email':
         return isKo ? '올바른 이메일 형식이 아니에요.' : 'Invalid email format.';
       default:

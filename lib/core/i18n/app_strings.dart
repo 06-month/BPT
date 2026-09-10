@@ -32,7 +32,7 @@ class AppStrings {
   final String alreadyHaveAccount;
   final String noAccount;
   final String poweredBy;
-  final String minSixChars;
+  final String minEightChars;
   final String nameRequired;
   final String validEmail;
   final String signInSubtitle;
@@ -184,7 +184,7 @@ class AppStrings {
     required this.alreadyHaveAccount,
     required this.noAccount,
     required this.poweredBy,
-    required this.minSixChars,
+    required this.minEightChars,
     required this.nameRequired,
     required this.validEmail,
     required this.signInSubtitle,
@@ -326,7 +326,7 @@ class AppStrings {
     alreadyHaveAccount: 'Already have an account? ',
     noAccount: "Don't have an account? ",
     poweredBy: 'Powered by AI Pose Estimation',
-    minSixChars: 'Min 6 characters',
+    minEightChars: 'Min 8 characters',
     nameRequired: 'Name is required',
     validEmail: 'Enter valid email',
     signInSubtitle: 'Your best workout is waiting!',
@@ -468,7 +468,7 @@ class AppStrings {
     alreadyHaveAccount: '이미 계정이 있으신가요? ',
     noAccount: '계정이 없으신가요? ',
     poweredBy: 'AI 자세 추정 기반 서비스',
-    minSixChars: '최소 6자 이상',
+    minEightChars: '최소 8자 이상',
     nameRequired: '이름을 입력해주세요',
     validEmail: '유효한 이메일을 입력해주세요',
     signInSubtitle: '최고의 운동이 기다리고 있어요!',
