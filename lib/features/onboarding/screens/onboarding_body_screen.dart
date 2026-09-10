@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/route_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../providers/onboarding_provider.dart';
 import '../widgets/onboarding_scaffold.dart';
@@ -96,17 +97,14 @@ class _OnboardingBodyScreenState extends ConsumerState<OnboardingBodyScreen> {
       step: 2,
       totalSteps: 4,
       onBack: () => context.pop(),
-      onNext: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('다음 단계(STEP 3)는 아직 준비 중이야.'),
-      )),
+      onNext: () => context.push(RouteConstants.onboardingGoal),
+      headline: const Text('키랑 몸무게도\n알려줘!',
+          style: TextStyle(
+              fontSize: 27,
+              height: 1.15,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1)),
       body: [
-        const Text('키랑 몸무게도\n알려줘!',
-            style: TextStyle(
-                fontSize: 27,
-                height: 1.15,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1)),
-        const SizedBox(height: 20),
         _MeasurementCard(
           label: '키',
           unit: 'cm',

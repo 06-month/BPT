@@ -22,14 +22,13 @@ class OnboardingGenderScreen extends ConsumerWidget {
       onNext: gender != null
           ? () => context.push(RouteConstants.onboardingBody)
           : null,
+      headline: const Text('성별 알려줘!',
+          style: TextStyle(
+              fontSize: 27,
+              height: 1.15,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1)),
       body: [
-        const Text('성별 알려줘!',
-            style: TextStyle(
-                fontSize: 27,
-                height: 1.15,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1)),
-        const SizedBox(height: 20),
         Row(
           children: [
             Expanded(

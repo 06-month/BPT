@@ -4,16 +4,22 @@ enum Gender { male, female, preferNotToSay }
 
 enum BmiCategory { underweight, normal, overweight, obese }
 
+enum WorkoutGoal { strength, weightLoss, postureCorrection, healthCare }
+
 class OnboardingState {
   const OnboardingState({
     this.gender,
     this.heightCm = 176,
     this.weightKg = 71.5,
+    this.goal = WorkoutGoal.strength,
+    this.weeklyFrequency = 5,
   });
 
   final Gender? gender;
   final double heightCm;
   final double weightKg;
+  final WorkoutGoal goal;
+  final int weeklyFrequency;
 
   /// weight(kg) / height(m)^2
   double get bmi => weightKg / ((heightCm / 100) * (heightCm / 100));
@@ -32,15 +38,26 @@ class OnboardingState {
         BmiCategory.obese => '비만',
       };
 
+  String get goalCourseLabel => switch (goal) {
+        WorkoutGoal.strength => '근력',
+        WorkoutGoal.weightLoss => '체중 감량',
+        WorkoutGoal.postureCorrection => '체형 교정',
+        WorkoutGoal.healthCare => '건강 관리',
+      };
+
   OnboardingState copyWith({
     Gender? gender,
     double? heightCm,
     double? weightKg,
+    WorkoutGoal? goal,
+    int? weeklyFrequency,
   }) =>
       OnboardingState(
         gender: gender ?? this.gender,
         heightCm: heightCm ?? this.heightCm,
         weightKg: weightKg ?? this.weightKg,
+        goal: goal ?? this.goal,
+        weeklyFrequency: weeklyFrequency ?? this.weeklyFrequency,
       );
 }
 
@@ -52,6 +69,11 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   void setHeight(double heightCm) => state = state.copyWith(heightCm: heightCm);
 
   void setWeight(double weightKg) => state = state.copyWith(weightKg: weightKg);
+
+  void selectGoal(WorkoutGoal goal) => state = state.copyWith(goal: goal);
+
+  void setWeeklyFrequency(int frequency) =>
+      state = state.copyWith(weeklyFrequency: frequency);
 }
 
 final onboardingProvider =

@@ -4,14 +4,16 @@ import '../../../core/theme/app_colors.dart';
 import '../../auth/widgets/auth_dark_form.dart';
 
 /// Shared layout for every onboarding step: a fixed back arrow + step
-/// progress bar on top, scrollable [body] content in the middle, and a
-/// pinned "다음" CTA at the bottom so it never needs scrolling to reach.
+/// progress bar + [headline] on top, scrollable [body] content in the
+/// middle, and a pinned "다음" CTA at the bottom so it never needs
+/// scrolling to reach.
 class OnboardingScaffold extends StatelessWidget {
   const OnboardingScaffold({
     super.key,
     required this.step,
     required this.totalSteps,
     required this.onBack,
+    required this.headline,
     required this.body,
     required this.onNext,
     this.nextLabel = '다음',
@@ -20,6 +22,7 @@ class OnboardingScaffold extends StatelessWidget {
   final int step;
   final int totalSteps;
   final VoidCallback onBack;
+  final Widget headline;
   final List<Widget> body;
   final VoidCallback? onNext;
   final String nextLabel;
@@ -86,12 +89,14 @@ class OnboardingScaffold extends StatelessWidget {
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.5)),
+                        const SizedBox(height: 16),
+                        headline,
                       ],
                     ),
                   ),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
+                      padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: body,
