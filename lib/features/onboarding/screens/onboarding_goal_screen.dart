@@ -37,7 +37,7 @@ class OnboardingGoalScreen extends ConsumerWidget {
           selected: state.goal == WorkoutGoal.strength,
           onTap: () => notifier.selectGoal(WorkoutGoal.strength),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         _GoalCard(
           icon: Icons.trending_down_rounded,
           title: '체중 감량',
@@ -45,7 +45,7 @@ class OnboardingGoalScreen extends ConsumerWidget {
           selected: state.goal == WorkoutGoal.weightLoss,
           onTap: () => notifier.selectGoal(WorkoutGoal.weightLoss),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         _GoalCard(
           icon: Icons.accessibility_new_rounded,
           title: '체형 교정',
@@ -53,7 +53,7 @@ class OnboardingGoalScreen extends ConsumerWidget {
           selected: state.goal == WorkoutGoal.postureCorrection,
           onTap: () => notifier.selectGoal(WorkoutGoal.postureCorrection),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         _GoalCard(
           icon: Icons.favorite_rounded,
           title: '건강 관리',
@@ -61,13 +61,13 @@ class OnboardingGoalScreen extends ConsumerWidget {
           selected: state.goal == WorkoutGoal.healthCare,
           onTap: () => notifier.selectGoal(WorkoutGoal.healthCare),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
         const Text('일주일에 몇 번 볼까?',
             style: TextStyle(
                 color: AppColors.white,
                 fontSize: 15,
                 fontWeight: FontWeight.w700)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Row(
           children: [
             for (final freq in _weeklyFrequencyOptions) ...[
@@ -83,7 +83,7 @@ class OnboardingGoalScreen extends ConsumerWidget {
             ],
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -146,25 +146,25 @@ class _GoalCard extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
             color: selected ? AppColors.green : AppColors.grey,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
                   color: selected ? AppColors.black : const Color(0xFF2B2B2B),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon,
                     color: selected ? AppColors.green : AppColors.white,
-                    size: 20),
+                    size: 17),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,28 +172,28 @@ class _GoalCard extends StatelessWidget {
                     Text(title,
                         style: TextStyle(
                             color: selected ? AppColors.black : AppColors.white,
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     Text(subtitle,
                         style: TextStyle(
                             color: selected
                                 ? const Color(0xFF3F5518)
                                 : const Color(0xFF888888),
-                            fontSize: 12)),
+                            fontSize: 11)),
                   ],
                 ),
               ),
               if (selected)
                 Container(
-                  width: 26,
-                  height: 26,
+                  width: 22,
+                  height: 22,
                   decoration: const BoxDecoration(
                     color: AppColors.black,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.check_rounded,
-                      color: AppColors.green, size: 16),
+                      color: AppColors.green, size: 14),
                 ),
             ],
           ),
@@ -216,7 +216,7 @@ class _FrequencyChip extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: selected ? AppColors.purple : AppColors.grey,
             borderRadius: BorderRadius.circular(14),
@@ -226,7 +226,7 @@ class _FrequencyChip extends StatelessWidget {
               Text('$frequency',
                   style: TextStyle(
                       color: selected ? AppColors.black : AppColors.white,
-                      fontSize: 17,
+                      fontSize: 16,
                       fontWeight: FontWeight.w900)),
               Text('회',
                   style: TextStyle(

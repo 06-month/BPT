@@ -55,16 +55,7 @@ class _OnboardingScanScreenState extends State<OnboardingScanScreen> {
     if (!mounted) return null;
 
     if (status == 'captured' && path != null) {
-      setState(() {
-        _capturedPaths[_pose] = path;
-        _status = 'searching';
-        _countdown = 0;
-        if (_poseIndex < _poses.length - 1) _poseIndex += 1;
-      });
-      if (_allCaptured) {
-        context.go(RouteConstants.onboardingAnalyzing,
-            extra: _poses.map((p) => _capturedPaths[p]!).toList());
-      }
+      _onCaptured(path);
       return null;
     }
 
@@ -74,6 +65,23 @@ class _OnboardingScanScreenState extends State<OnboardingScanScreen> {
     });
     return null;
   }
+
+  void _onCaptured(String path) {
+    setState(() {
+      _capturedPaths[_pose] = path;
+      _status = 'searching';
+      _countdown = 0;
+      if (_poseIndex < _poses.length - 1) _poseIndex += 1;
+    });
+    if (_allCaptured) {
+      context.go(RouteConstants.onboardingAnalyzing,
+          extra: _poses.map((p) => _capturedPaths[p]!).toList());
+    }
+  }
+
+  // TODO(temp): debug-only skip button so the flow can be tested on the
+  // simulator (no real camera). Remove once real-device testing is set up.
+  void _debugSkip() => _onCaptured('');
 
   void _showHelp() {
     showModalBottomSheet<void>(
@@ -233,6 +241,31 @@ class _OnboardingScanScreenState extends State<OnboardingScanScreen> {
                 ],
               ),
             ),
+            // TODO(temp): debug-only skip button — remove once real-device
+            // testing is set up (the simulator has no camera to auto-advance).
+            Positioned(
+              right: 16,
+              bottom: 100,
+              child: SafeArea(
+                child: GestureDetector(
+                  onTap: _debugSkip,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.red, width: 1.5),
+                    ),
+                    child: const Text('다음 (테스트용)',
+                        style: TextStyle(
+                            color: AppColors.red,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -339,7 +372,7 @@ class _PoseChip extends StatelessWidget {
         child: Text('$label 완료',
             textAlign: TextAlign.center,
             style: const TextStyle(
-                color: AppColors.red, fontSize: 12, fontWeight: FontWeight.w700)),
+                color: AppColors.pink, fontSize: 12, fontWeight: FontWeight.w700)),
       );
     }
 

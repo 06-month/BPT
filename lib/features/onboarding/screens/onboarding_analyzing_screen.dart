@@ -10,7 +10,7 @@ import '../../../core/theme/app_colors.dart';
 /// Shown right after the 3 body-scan photos are captured. Plays a fake
 /// analysis progress animation (no backend call yet — the real pipeline
 /// isn't wired up), then deletes the local scan photos and continues to
-/// home. The 3D result screen this hands off to doesn't exist yet.
+/// the 3D result screen.
 class OnboardingAnalyzingScreen extends StatefulWidget {
   const OnboardingAnalyzingScreen({super.key, this.scanPaths = const []});
 
@@ -46,7 +46,7 @@ class _OnboardingAnalyzingScreenState extends State<OnboardingAnalyzingScreen>
         // Best-effort cleanup — a missing/locked file isn't fatal here.
       }
     }
-    if (mounted) context.go(RouteConstants.home);
+    if (mounted) context.go(RouteConstants.onboardingResult);
   }
 
   @override

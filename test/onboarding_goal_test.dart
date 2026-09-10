@@ -74,4 +74,19 @@ void main() {
     expect(headlineAfter, headlineBefore);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('everything fits on a typical phone screen without scrolling',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844); // iPhone 14-ish
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: OnboardingGoalScreen())));
+    await tester.pump();
+
+    final position =
+        tester.state<ScrollableState>(find.byType(Scrollable)).position;
+    expect(position.maxScrollExtent, 0);
+  });
 }

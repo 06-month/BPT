@@ -39,4 +39,17 @@ void main() {
     expect(find.text('대기 중'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('temporary debug skip button advances to the next pose',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: OnboardingScanScreen()));
+
+    expect(find.text('다음 (테스트용)'), findsOneWidget);
+
+    await tester.tap(find.text('다음 (테스트용)'));
+    await tester.pump();
+
+    expect(find.text('2 / 3 · 왼쪽 측면'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

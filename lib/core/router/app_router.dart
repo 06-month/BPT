@@ -12,6 +12,7 @@ import '../../features/onboarding/screens/onboarding_goal_screen.dart';
 import '../../features/onboarding/screens/onboarding_capture_screen.dart';
 import '../../features/onboarding/screens/onboarding_scan_screen.dart';
 import '../../features/onboarding/screens/onboarding_analyzing_screen.dart';
+import '../../features/onboarding/screens/onboarding_result_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/report/screens/report_screen.dart';
@@ -38,7 +39,8 @@ String? resolveAuthRedirect(
       location != RouteConstants.onboardingGoal &&
       location != RouteConstants.onboardingCapture &&
       location != RouteConstants.onboardingScan &&
-      location != RouteConstants.onboardingAnalyzing) {
+      location != RouteConstants.onboardingAnalyzing &&
+      location != RouteConstants.onboardingResult) {
     return RouteConstants.login;
   }
   if (loggedIn && location == RouteConstants.login) return RouteConstants.home;
@@ -113,6 +115,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return _slidePage(
               state, OnboardingAnalyzingScreen(scanPaths: scanPaths));
         },
+      ),
+      GoRoute(
+        path: RouteConstants.onboardingResult,
+        pageBuilder: (context, state) =>
+            _slidePage(state, const OnboardingResultScreen()),
       ),
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
