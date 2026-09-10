@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/route_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../providers/onboarding_provider.dart';
 import '../widgets/onboarding_scaffold.dart';
@@ -21,9 +22,7 @@ class OnboardingGoalScreen extends ConsumerWidget {
       totalSteps: 4,
       onBack: () => context.pop(),
       nextLabel: '체형 측정하러 가기',
-      onNext: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('다음 단계(STEP 4)는 아직 준비 중이야.'),
-      )),
+      onNext: () => context.push(RouteConstants.onboardingCapture),
       headline: const Text('목표가 뭐야?\n거기에 맞춰줄게',
           style: TextStyle(
               fontSize: 27,
