@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/account_recovery_screen.dart';
+import '../../features/auth/screens/sign_up_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/report/screens/report_screen.dart';
@@ -16,6 +17,22 @@ import '../../features/workout/screens/workout_screen.dart';
 import '../constants/route_constants.dart';
 import '../shell/main_shell.dart';
 
+/// 로그인 상태 + 현재 위치만으로 리다이렉트 대상을 결정하는 순수 함수.
+/// GoRouter/Firebase 없이 단위 테스트할 수 있도록 분리했다.
+String? resolveAuthRedirect(
+    {required bool loggedIn, required String location}) {
+  if (location == RouteConstants.splash) return null;
+
+  if (!loggedIn &&
+      location != RouteConstants.login &&
+      location != RouteConstants.accountRecovery &&
+      location != RouteConstants.signUp) {
+    return RouteConstants.login;
+  }
+  if (loggedIn && location == RouteConstants.login) return RouteConstants.home;
+  return null;
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   // ref.read (not watch) so GoRouter is not recreated on auth change.
   // refreshListenable handles dynamic redirects instead.
@@ -24,20 +41,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: RouteConstants.splash,
     refreshListenable: authNotifier,
-    redirect: (BuildContext context, GoRouterState state) {
-      final loggedIn = authNotifier.isLoggedIn;
-      final loc = state.matchedLocation;
-
-      if (loc == RouteConstants.splash) return null;
-
-      if (!loggedIn &&
-          loc != RouteConstants.login &&
-          loc != RouteConstants.accountRecovery) {
-        return RouteConstants.login;
-      }
-      if (loggedIn && loc == RouteConstants.login) return RouteConstants.home;
-      return null;
-    },
+    redirect: (BuildContext context, GoRouterState state) =>
+        resolveAuthRedirect(
+      loggedIn: authNotifier.isLoggedIn,
+      location: state.matchedLocation,
+    ),
     routes: [
       GoRoute(
         path: RouteConstants.splash,
@@ -54,6 +62,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: RouteConstants.accountRecovery,
         pageBuilder: (context, state) =>
             _slidePage(state, const AccountRecoveryScreen()),
+      ),
+      GoRoute(
+        path: RouteConstants.signUp,
+        pageBuilder: (context, state) =>
+            _slidePage(state, const SignUpScreen()),
       ),
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
