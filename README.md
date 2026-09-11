@@ -143,14 +143,16 @@ Flutter 쪽은 `flutter_riverpod` 기반 단방향 상태 관리와 `go_router` 
 CoreML 기반 실시간 자세 분석은 카메라 입력과 온디바이스 추론을 사용하므로 시뮬레이터보다 실제 iPhone에서 실행하는 것을 권장합니다. 코드 서명 오류를 피하려면 클라우드 동기화 폴더가 아닌 로컬 개발 경로에서 빌드하세요.
 
 ```sh
-git clone -b dev/ai https://github.com/06-month/BPT.git
-cd BPT/bpt
+git clone https://github.com/Hanbat-Personal-Training-AI-Agent/BPT.git
+cd BPT
 flutter pub get
-cd ios && pod install
-open Runner.xcworkspace
+cd ios && pod install && cd ..
+open ios/Runner.xcworkspace
 ```
 
-`Runner.xcodeproj`가 아니라 `Runner.xcworkspace`를 여세요. Signing & Capabilities에서 Team을 설정하고 실기기를 연결해 `Runner` 스킴을 실행합니다. 런타임 모델은 `bpt/ios/Runner/NativePose/Models/`에 함께 버전 관리됩니다. Firebase 설정은 `lib/firebase_options.dart`(Flutter), `GoogleService-Info.plist`(iOS), `android/app/google-services.json`(Android)을 대상 프로젝트에 맞게 교체하세요.
+`Runner.xcodeproj`가 아니라 `Runner.xcworkspace`를 여세요. Signing & Capabilities에서 Team을 본인 계정으로 지정하고 Bundle Identifier를 고유한 값으로 바꾼 뒤, 실기기를 연결해 `Runner` 스킴을 실행합니다. 런타임 모델은 `ios/Runner/NativePose/Models/`에 함께 버전 관리됩니다. Firebase 설정(`lib/firebase_options.dart`, `android/app/google-services.json`)은 저장소에 포함되어 있어 그대로 동작합니다.
+
+Xcode 계정 등록부터 실기기 설치까지의 전 과정은 [**INSTALL.md**](INSTALL.md)에 단계별로 정리했습니다. 처음 클론했다면 그 문서를 따라가세요.
 
 Python 레퍼런스 테스트:
 
@@ -183,6 +185,7 @@ pytest
 
 ## 문서
 
+- [설치 및 실행 설명서](INSTALL.md)
 - [이미지 입력부터 자세 판정 직전까지의 AI 파이프라인](docs/research/rtmpose_motionagformer_image_to_pose_pipeline.md)
 - [네이티브 포즈 CoreML 파이프라인](docs/research/coreml_rtmpose_s_motionagformer_xs_pipeline.md)
 - [RTMPose-s CoreML 변환 검토](docs/research/rtmpose_s_coreml_feasibility.md)
