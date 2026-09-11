@@ -1,0 +1,9 @@
+# Regenerate iOS first, then Android (which reuses the opaque iOS master):
+# dart run flutter_launcher_icons -f flutter_launcher_icons_ios.yaml
+# dart run flutter_launcher_icons -f flutter_launcher_icons_android.yaml
+flutter_launcher_icons:
+  ios: true
+  android: false
+  image_path: assets/images/character/splash_logo.png
+  remove_alpha_ios: true
+  background_color_ios: '#101010'
