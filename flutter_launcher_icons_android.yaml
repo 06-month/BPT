@@ -1,0 +1,8 @@
+flutter_launcher_icons:
+  ios: false
+  android: true
+  # The iOS generator composites the original logo onto #101010 for legacy icons.
+  image_path: ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png
+  adaptive_icon_background: '#101010'
+  adaptive_icon_foreground: assets/images/character/splash_logo.png
+  adaptive_icon_foreground_inset: 16
