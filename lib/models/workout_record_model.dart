@@ -1,7 +1,9 @@
 import 'dart:convert';
+import '../data/dto/workout_metadata_dto.dart';
 
 class WorkoutRecordModel {
-  final String id;
+  final String id; // Client side unique ID
+  final String? serverId; // Spring Boot server assigned record ID
   final String exerciseId;
   final String exerciseName;
   final DateTime date;
@@ -9,13 +11,15 @@ class WorkoutRecordModel {
   final int correctReps;
   final int incorrectReps;
   final int durationSeconds;
-  final double postureScore;
+  final double postureScore; // 피드백 점수 (0.0 ~ 100.0)
   final List<String> feedbackNotes;
   final int targetReps;
   final int targetSets;
+  final bool isSynced; // Spring Boot 백엔드 서버 동기화 여부
 
   const WorkoutRecordModel({
     required this.id,
+    this.serverId,
     required this.exerciseId,
     required this.exerciseName,
     required this.date,
@@ -27,6 +31,7 @@ class WorkoutRecordModel {
     required this.feedbackNotes,
     this.targetReps = 0,
     this.targetSets = 1,
+    this.isSynced = false,
   });
 
   int get accuracy =>
@@ -41,8 +46,79 @@ class WorkoutRecordModel {
     return '${m}m ${s}s';
   }
 
+  WorkoutRecordModel copyWith({
+    String? id,
+    String? serverId,
+    String? exerciseId,
+    String? exerciseName,
+    DateTime? date,
+    int? totalReps,
+    int? correctReps,
+    int? incorrectReps,
+    int? durationSeconds,
+    double? postureScore,
+    List<String>? feedbackNotes,
+    int? targetReps,
+    int? targetSets,
+    bool? isSynced,
+  }) {
+    return WorkoutRecordModel(
+      id: id ?? this.id,
+      serverId: serverId ?? this.serverId,
+      exerciseId: exerciseId ?? this.exerciseId,
+      exerciseName: exerciseName ?? this.exerciseName,
+      date: date ?? this.date,
+      totalReps: totalReps ?? this.totalReps,
+      correctReps: correctReps ?? this.correctReps,
+      incorrectReps: incorrectReps ?? this.incorrectReps,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      postureScore: postureScore ?? this.postureScore,
+      feedbackNotes: feedbackNotes ?? this.feedbackNotes,
+      targetReps: targetReps ?? this.targetReps,
+      targetSets: targetSets ?? this.targetSets,
+      isSynced: isSynced ?? this.isSynced,
+    );
+  }
+
+  WorkoutMetadataRequestDto toDto() {
+    return WorkoutMetadataRequestDto(
+      clientRecordId: id,
+      exerciseId: exerciseId,
+      exerciseName: exerciseName,
+      date: date,
+      totalReps: totalReps,
+      correctReps: correctReps,
+      incorrectReps: incorrectReps,
+      durationSeconds: durationSeconds,
+      postureScore: postureScore,
+      feedbackNotes: feedbackNotes,
+      targetReps: targetReps,
+      targetSets: targetSets,
+    );
+  }
+
+  factory WorkoutRecordModel.fromDto(WorkoutMetadataRequestDto dto, {bool isSynced = false, String? serverId}) {
+    return WorkoutRecordModel(
+      id: dto.clientRecordId,
+      serverId: serverId,
+      exerciseId: dto.exerciseId,
+      exerciseName: dto.exerciseName,
+      date: dto.date,
+      totalReps: dto.totalReps,
+      correctReps: dto.correctReps,
+      incorrectReps: dto.incorrectReps,
+      durationSeconds: dto.durationSeconds,
+      postureScore: dto.postureScore,
+      feedbackNotes: dto.feedbackNotes,
+      targetReps: dto.targetReps,
+      targetSets: dto.targetSets,
+      isSynced: isSynced,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
+        'serverId': serverId,
         'exerciseId': exerciseId,
         'exerciseName': exerciseName,
         'date': date.toIso8601String(),
@@ -54,11 +130,13 @@ class WorkoutRecordModel {
         'feedbackNotes': feedbackNotes,
         'targetReps': targetReps,
         'targetSets': targetSets,
+        'isSynced': isSynced,
       };
 
   factory WorkoutRecordModel.fromJson(Map<String, dynamic> json) =>
       WorkoutRecordModel(
         id: json['id'] as String? ?? '',
+        serverId: json['serverId'] as String?,
         exerciseId: json['exerciseId'] as String? ?? '',
         exerciseName: json['exerciseName'] as String? ?? '',
         date: json['date'] != null
@@ -73,6 +151,7 @@ class WorkoutRecordModel {
             (json['feedbackNotes'] as List?)?.cast<String>() ?? [],
         targetReps: (json['targetReps'] as num?)?.toInt() ?? 0,
         targetSets: (json['targetSets'] as num?)?.toInt() ?? 1,
+        isSynced: json['isSynced'] as bool? ?? false,
       );
 
   String toJsonString() => jsonEncode(toJson());

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../features/auth/providers/auth_provider.dart';
@@ -194,25 +192,6 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
       weightKg: newWeight,
       heightCm: newHeight,
     );
-
-    final firebaseUser = FirebaseAuth.instance.currentUser;
-    if (firebaseUser != null) {
-      try {
-        // set(merge:true) — 문서 없으면 생성, 있으면 해당 필드만 갱신
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(firebaseUser.uid)
-            .set({
-          'name': name,
-          'avatarInitials': initials,
-          'birthDate': _selectedBirthDate?.toIso8601String(),
-          'weightKg': newWeight,
-          'heightCm': newHeight,
-        }, SetOptions(merge: true));
-      } catch (_) {
-        // 네트워크/권한 오류여도 인메모리+캐시 상태는 항상 반영
-      }
-    }
 
     await ref.read(authNotifierProvider).updateProfile(updated);
     if (mounted) Navigator.pop(context);

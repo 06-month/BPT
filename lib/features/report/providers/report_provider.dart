@@ -10,7 +10,8 @@ final reportTabProvider = StateProvider<ReportTab>((ref) => ReportTab.daily);
 
 final reportDataProvider = Provider<Map<String, dynamic>>((ref) {
   final tab = ref.watch(reportTabProvider);
-  final records = ref.watch(workoutRecordsProvider);
+  final recordsAsync = ref.watch(workoutRecordsProvider);
+  final records = recordsAsync.value ?? [];
   final isKo = ref.watch(selectedLanguageProvider) == 'ko';
 
   switch (tab) {
@@ -48,11 +49,10 @@ Map<String, dynamic> _buildSummary({
   };
 }
 
-// ── Daily: 오늘 포함 최근 7 달력 일 ──────────────────────────────────────────
+// ── Daily ──────────────────────────────────────────────────────────
 Map<String, dynamic> _buildDailyData(
     List<WorkoutRecordModel> records, bool isKo) {
   final today = _dateOnly(DateTime.now());
-  // index 0 = 6일 전, index 6 = 오늘
   final days = List.generate(7, (i) => today.subtract(Duration(days: 6 - i)));
 
   final labels = days.map((d) => '${d.month}/${d.day}').toList();
@@ -86,14 +86,13 @@ Map<String, dynamic> _buildDailyData(
   };
 }
 
-// ── Weekly: 현재 주 포함 최근 6주 ────────────────────────────────────────────
+// ── Weekly ────────────────────────────────────────────────────────────
 Map<String, dynamic> _buildWeeklyData(
     List<WorkoutRecordModel> records, bool isKo) {
   final now = DateTime.now();
   final currentMonday =
       _dateOnly(now).subtract(Duration(days: now.weekday - 1));
 
-  // index 0 = 5주 전 월요일, index 5 = 이번 주 월요일
   final weekStarts = List.generate(
       6, (i) => currentMonday.subtract(Duration(days: (5 - i) * 7)));
 
@@ -140,11 +139,10 @@ Map<String, dynamic> _buildWeeklyData(
   };
 }
 
-// ── Monthly: 현재 달 포함 최근 6개월 ─────────────────────────────────────────
+// ── Monthly ─────────────────────────────────────────────────────────
 Map<String, dynamic> _buildMonthlyData(
     List<WorkoutRecordModel> records, bool isKo) {
   final now = DateTime.now();
-  // index 0 = 5달 전, index 5 = 이번 달
   final months = List.generate(6, (i) {
     final offset = 5 - i;
     int m = now.month - offset;

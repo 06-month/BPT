@@ -17,17 +17,19 @@ final weeklyWorkoutGoalProvider = StateProvider<int>((ref) => 5);
 
 // ── All records ───────────────────────────────────────────────────────────
 final allRecordsProvider = Provider<List<WorkoutRecordModel>>((ref) {
-  return ref.watch(workoutRecordsProvider);
+  final recordsAsync = ref.watch(workoutRecordsProvider);
+  return recordsAsync.value ?? [];
 });
 
 // ── Recent 3 records ──────────────────────────────────────────────────────
 final recentRecordsProvider = Provider<List<WorkoutRecordModel>>((ref) {
-  return ref.watch(workoutRecordsProvider).take(3).toList();
+  final records = ref.watch(allRecordsProvider);
+  return records.take(3).toList();
 });
 
 // ── Weekly workout count ──────────────────────────────────────────────────
 final weeklyWorkoutsProvider = Provider<int>((ref) {
-  final records = ref.watch(workoutRecordsProvider);
+  final records = ref.watch(allRecordsProvider);
   final now = DateTime.now();
   final weekStart = DateTime(now.year, now.month, now.day)
       .subtract(Duration(days: now.weekday - 1));
@@ -36,7 +38,7 @@ final weeklyWorkoutsProvider = Provider<int>((ref) {
 
 // ── Streak days (consecutive days with at least one workout) ──────────────
 final streakDaysProvider = Provider<int>((ref) {
-  final records = ref.watch(workoutRecordsProvider);
+  final records = ref.watch(allRecordsProvider);
   if (records.isEmpty) return 0;
 
   DateTime dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
@@ -61,7 +63,7 @@ final streakDaysProvider = Provider<int>((ref) {
 
 // ── Today's summary ───────────────────────────────────────────────────────
 final todaySummaryProvider = Provider<Map<String, dynamic>>((ref) {
-  final records = ref.watch(workoutRecordsProvider);
+  final records = ref.watch(allRecordsProvider);
   final streak = ref.watch(streakDaysProvider);
 
   final today = DateTime.now();
